@@ -1,0 +1,141 @@
+{
+  "date": "2023-06-22",
+  "workouts": [
+    {
+      "date": "2023-06-22",
+      "theme": "Strength",
+      "exercises": [
+        {
+          "exercise_id": 1,
+          "name": "Squats",
+          "reps": 8,
+          "sets": 4,
+          "weights": "145 lbs",
+          "rest": "2 min"
+        },
+        {
+          "exercise_id": 2,
+          "name": "Bench press",
+          "reps": 8,
+          "sets": 3,
+          "weights": "115 lbs",
+          "rest": "2 min"
+        },
+        {
+          "exercise_id": 3,
+          "name": "Seated Shoulder Press",
+          "reps": 10,
+          "sets": 3,
+          "weights": "30 lbs dumbbell",
+          "rest": "90 sec"
+        },
+        {
+          "exercise_id": 4,
+          "name": "Pull-ups",
+          "reps": 10,
+          "sets": 3,
+          "weights": "bodyweight",
+          "rest": "90 sec"
+        }
+      ],
+      "running": null,
+      "reasoning": "Today's focus is on building core strength, particularly in your legs, upper body, and shoulders. This is foundational for handling the weighted elements in the HYROX event like the sled push/pull and Farmers carry. We've adjusted weights slightly to focus on hypertrophy and muscular endurance, key for improving your overall endurance."
+    },
+    {
+      "date": "2023-06-23",
+      "theme": "Running Interval",
+      "exercises": [],
+      "running": {
+        "type": "Interval",
+        "description": "8 * 1km off 2.5 mins rest",
+        "pace": "5km pace"
+      },
+      "reasoning": "Interval training is crucial for improving your cardiovascular endurance, which has been identified as a weakness. These intervals will push your heart and lungs, helping to improve your oxygen utilization and stamina. This will directly contribute to your ability to perform sustained running sections and recover quickly during the HYROX event."
+    },
+    {
+      "date": "2023-06-24",
+      "theme": "Hyrox Specific",
+      "exercises": [],
+      "running": null,
+      "hyrox_specific": "Workout 1",
+      "reasoning": "Today's workout replicates the varied and intensive demands of a HYROX event. It combines rowing, running, wall balls, and other HYROX-specific exercises. The varied nature of this workout will help you adapt to the different physical challenges you will face, enhancing both your endurance and ability to recover between different types of activities."
+    },
+    {
+      "date": "2023-06-25",
+      "theme": "Rest",
+      "exercises": [],
+      "running": null,
+      "reasoning": "Rest is critical for recovery and muscle growth, giving your muscles time to heal and your nervous system time to recover. Taking a rest day today will ensure you're ready to push hard through the rest of the week's workouts."
+    },
+    {
+      "date": "2023-06-26",
+      "theme": "Running Long",
+      "exercises": [],
+      "running": {
+        "type": "Long Distance",
+        "description": "7km run at a steady pace",
+        "pace": "comfortable"
+      },
+      "reasoning": "Long, steady runs build the aerobic base necessary for endurance activities like HYROX. This run should be at a comfortable pace, allowing you to focus on maintaining a steady breathing pattern and building your cardiovascular stamina. It will also help you get used to longer, sustained efforts that are part of the HYROX competition."
+    },
+    {
+      "date": "2023-06-27",
+      "theme": "Strength",
+      "exercises": [
+        {
+          "exercise_id": 5,
+          "name": "Leg Press",
+          "reps": 10,
+          "sets": 4,
+          "weights": "200 lbs",
+          "rest": "2 min"
+        },
+        {
+          "exercise_id": 6,
+          "name": "Box Step Ups",
+          "reps": 12,
+          "sets": 3,
+          "weights": "30 lbs dumbbells",
+          "rest": "2 min"
+        },
+        {
+          "exercise_id": 7,
+          "name": "Bulgarian Split Squat",
+          "reps": 10,
+          "sets": 3,
+          "weights": "bodyweight",
+          "rest": "90 sec"
+        },
+        {
+          "exercise_id": 8,
+          "name": "Dips",
+          "reps": 12,
+          "sets": 3,
+          "weights": "bodyweight",
+          "rest": "90 sec"
+        }
+      ],
+      "running": null,
+      "reasoning": "Focusing on lower body and compound movements will ensure you build the functional strength needed for exercises like sled pulls and lunges. This session is designed to enhance your muscle endurance and limit fatigue during the more intense segments of the HYROX event."
+    },
+    {
+      "date": "2023-06-28",
+      "theme": "Running Tempo",
+      "exercises": [],
+      "running": {
+        "type": "Tempo Run",
+        "description": "5km run at a tempo pace",
+        "pace": "slightly faster than comfortable"
+      },
+      "reasoning": "A tempo run will help elevate your lactate threshold, allowing you to sustain higher intensities for longer periods. This is vital for the continuous efforts required in HYROX. This session will push your body to adapt to higher intensities, further bolstering your endurance."
+    },
+    {
+      "date": "2023-06-29",
+      "theme": "Rest",
+      "exercises": [],
+      "running": null,
+      "reasoning": "Resting today will help you recover from the week’s training, reducing fatigue and preventing overtraining. It’s crucial to balance work and recovery to ensure you’re in peak condition for each training session, ensuring overall endurance growth and muscle repair."
+    }
+  ],
+  "comments": "This week's program is focused on balancing strength and endurance training to prepare you for the multidimensional demands of the HYROX competition. Emphasis has been placed on improving your cardiovascular fitness and muscular endurance, with enough rest included to facilitate recovery and avoid overtraining."
+}

@@ -1,0 +1,239 @@
+You are an expert HYROX AI coach tasked with creating a personalized 1-week workout plan. Use the following information to tailor the plan for this specific user. Provide detailed explanations for your choices.
+
+USER PROFILE:
+- Gender: Male
+- Age: 25
+- Height: 175cm
+- Weight: 70kg
+- Goal: To compete in HYROX Men competition in 2 months
+- Training availability: Five days a week
+
+FITNESS STATUS:
+- Experience: Intermediate (6-12 months of lifting weights in the gym)
+- 5km time: 35 minutes
+- Squat 1 Rep Max: 185 lbs
+- Bench 1 Rep Max: 135 lbs
+- Leg Press 1 Rep Max: 225 lbs
+- DB Shoulder Press: 35 lbs dumbbell
+- Consecutive Pullups: 8 reps
+- Consecutive Dips: 11 reps
+- User comment: "I have low endurance and like to focus on it a bit."
+
+HYROX EVENT REQUIREMENTS:
+- Skierg: 1000m
+- Sled push: 152kg
+- Sled pull: 103kg
+- Burpee Broad jumps: 80m
+- Rowing: 1000m
+- Farmers carry: 200m with 2x24kg
+- Lunges: 100m with 20kg
+- Wall balls: 100 reps with 6kg
+
+WORKOUT THEMES:
+1. Running long
+2. Running tempo
+3. Running interval
+4. Hyrox Specific
+5. Strength
+6. Rest
+
+INSTRUCTIONS:
+1. Create a 7-day workout plan, assigning one theme per day, including two rest days.
+2. For each workout, provide specific details including weight, reps, sets, and rest periods.
+3. Tailor the plan to address the user's low endurance while preparing them for the HYROX competition.
+4. For each day's workout, provide a "reasoning" field that explains:
+    a. Why this specific workout was chosen for the user on this day.
+    b. How it addresses the user's current fitness level and concerns.
+    c. How it relates to a specific aspect of the HYROX competition.
+    d. Any modifications made to accommodate the user's strengths or weaknesses.
+The reasoning should be written in a conversational, coach-to-athlete tone. Use the user's specific data (like their 5km time or strength metrics) when relevant. Aim for 3-5 sentences that feel personal and tailored.
+Example reasoning structure:
+"[Workout choice explanation]. This targets [specific aspect] which is crucial for your HYROX preparation, especially given your current [relevant metric]. We've [any modifications] to address your endurance concerns. Remember, each [exercise/interval] brings you closer to your competition goal!"
+
+
+OUTPUT FORMAT:
+Provide the workout plan in the following JSON format:
+
+{
+  "date": "2023-06-22",
+  "workouts": [
+    {
+      "date": "2023-06-22",
+      "theme": "Strength",
+      "exercises": [
+        {
+          "exercise_id": 1,
+          "name": "Squats",
+          "reps": 10,
+          "sets": 3,
+          "weights": "135 lbs",
+          "rest": "2 min"
+        },
+        ...
+      ],
+      "running": null
+      "reasoning": ""
+    },
+    {
+      "date": "2023-06-23",
+      "theme": "Running Interval",
+      "exercises": [],
+      "running": {
+        "type": "Interval",
+        "description": "8 * 1km off 2.5 mins rest",
+        "pace": "5km pace"
+      }
+    },
+    {
+      "date": "2023-06-24",
+      "theme": "Hyrox Specific",
+      "exercises": [],
+      "running": null,
+      "hyrox_specific": "Workout 12"
+    },
+    ...
+  ],
+  "comments": "Overall comments about this week's plan."
+}
+
+
+EXERCISE POOL:
+1. Strength Exercises:
+  - Squats
+  - Seated Shoulder Press
+  - Sandbag weighted lunges
+  - Bench press
+  - Box step ups
+  - Pull-ups (weighted)
+  - Leg press
+  - Dips (weighted)
+  - Bulgarian split squat
+  - Seated row
+
+2. Running:
+  a) 8 * 1km off 2-3mins rest (rest time experience-dependent) | 5km pace
+  b) 10 * 800m off 2-3 mins rest (rest time experience-dependent) | 5km pace - 5 seconds
+  c) 6 * 1500m off 3-4 mins rest | 5km pace + 10 sec
+  d) 6 * 1200m off 2-3 mins rest | 5km pace
+  e) 6 * mile off 3-4 mins rest | 5km pace + 10 sec
+  f) 12 * 800m off 2-3 mins rest | 5km pace - 3 sec
+
+3. Hyrox Specifics:
+
+    a) Workout 1 (for time)
+    - 400 meter Row
+    - 30 Wall Ball Shots (20/14 lb)
+    - 400 meter Run
+    - 30 Burpees
+    - 400 meter Row
+    - 30 Sandbag Lunges (60/40 lb)
+    - 400 meter Run
+    - 30 Hand Release Push-Ups
+    - 400 meter Row
+    - 100 meter Farmer's Carry (2x50/35 lb)
+    - 400 meter Run
+    - 100 Sit-Ups
+
+    b) Workout 2 (for time)
+    - 400 meter Run
+    - 20 Burpees
+    - 600 meter Run
+    - 40 Wall Ball Shots (20/14 lb)
+    - 800 meter Run
+    - 60 Sandbag Lunges (60/40 lb)
+    - 1,000 meter Run
+    - 60 Sandbag Lunges (60/40 lb)
+    - 800 meter Run
+    - 40 Wall Ball Shots (20/14 lb)
+    - 600 meter Run
+    - 20 Burpees
+    - 400 meter Run
+
+    c) Workout 3 (AMRAP 35 mins)
+    Buy-In: 1,000 meter Run
+    5 Burpees
+    10 Wall Ball Shots (20/14 lb)
+    15 calorie Row
+    20 Sandbag Lunges (60/40 lb)
+    25 Sit-Ups
+    30 meter Farmer's Carry (2x50/35 lb)
+    Cash-Out: 1,000 meter Run
+
+    d) Workout 4 (AMRAP 30 mins)
+    10 Burpee Broad Jumps
+    20 Push-Ups
+    30 Sandbag Lunges (60/40 lb)
+    40 calorie Row
+
+    e) Workout 5 (AMRAP 45 mins)
+    From 0:00-15:00, AMRAP of:
+    20 Burpee Broad Jumps
+    400 meter Run
+    Rest 1 minute
+    From 16:00-30:00, AMRAP of:
+    20 Sandbag Lunges (10/60 lb)
+    400 meter Row
+    Rest 1 minute
+    From 31:00-45:00, AMRAP of:
+    20 Wall Ball Shots (20/14 lb)
+    400 meter Ski Erg
+
+    f) Workout 6 (for time)
+    1,000 meter Run
+    Then, 2 Rounds of:
+    10 Push-Ups
+    20 Burpees
+    30 Sandbag Lunges (150/100 lb)
+    1,000 meter Run
+    Repeat once more
+
+    g) Workout 7 (for time)
+    500m Ski erg
+    20 Burpees to Target
+    500m Run
+    25m sled push (comp weights)
+    500m Row
+    30 wall balls (comp weights)
+
+    h) Workout 8 (AMRAP 30 mins)
+    1km Run
+    50m Sled pull (comp weights)
+    50m Double Kettlebell Farmers Carry (comp weights)
+    25 sandbag lunges (comp weights)
+
+    i) Workout 9 (40 mins circuit)
+    Every 2 minutes for 40 minutes complete:
+    10 Burpees
+    15 Wall Balls (comp weights)
+    Max Distance on Rower in remaining time
+
+    j) Workout 10 (for time)
+    1km Run
+    50m Sled Push (comp weights)
+    800m Run
+    50m Sled Pull (comp weights)
+    600m Run
+    50 Wall Balls (comp weights)
+    400m Run
+    50 Burpees to Target
+    200m Run
+    50m Double Kettlebell Farmers Carry (comp weights)
+
+    k) Workout 11 (4 rounds)
+    1km Row
+    1km Ski-Erg
+    500m Run
+
+    l) Workout 12 (AMRAP 60 mins)
+    500m Run
+    50 Weighted Lunges (comp weights)
+    500m Run
+    500m Ski Erg
+    500m Run
+    30 Burpee Broad Jumps
+    500m Run
+    50 Wall Balls (comp weights)
+    500m Run
+    50m Sled Push (comp weights)
+    500m Run
+    50m Sled Pull (comp weights)
