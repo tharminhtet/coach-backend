@@ -11,8 +11,8 @@ class GeneratePlan:
         self.client = client
 
     def generate_weekly_plan(self) -> dict:
-        system_message = "You are a Hyrox coach."
-        with open("prompts/generate_plan.txt", "r") as file:
+        system_message = "You are a fitness coach."
+        with open("prompts/generate_workout_plan.txt", "r") as file:
             user_message = file.read()
         response = self.client.chat.completions.create(
             model="gpt-4o",

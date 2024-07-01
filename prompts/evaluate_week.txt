@@ -1,0 +1,221 @@
+You are a fitness coach.
+Please evaluate the user's performance in the previous week's workout plan that you created.
+Only talk about the essential insights that are actionable, and can adjust the plan for the next week.
+
+Previous Week's Workout.
+status: user's exercise completion status or reason for failure
+reasoning: The coach's explanation for how a single day workout is assembled.
+{
+  "date": "2023-06-22",
+  "workouts": [
+    {
+      "date": "2023-06-22",
+      "theme": "Strength",
+      "exercises": [
+        {
+          "name": "Squats",
+          "reps": 10,
+          "sets": 3,
+          "weights": "95 lbs",
+          "status": "Completed"
+        },
+        {
+          "name": "Deadlifts",
+          "reps": 10,
+          "sets": 3,
+          "weights": "95 lbs",
+          "status": "Completed"
+        },
+        {
+          "name": "Bench Press",
+          "reps": 10,
+          "sets": 3,
+          "weights": "85 lbs",
+          "status": "User didn't complete because they only lifted 75 lbs in the last set."
+        },
+        {
+          "name": "Dumbbell Shoulder Press",
+          "reps": 12,
+          "sets": 3,
+          "weights": "25 lbs dumbbells",
+          "status": "Completed"
+        }
+      ],
+      "running": null,
+      "reasoning": "Hey there! Since you’re a beginner and your goal is to lose belly fat, we’re starting with a full-body strength workout. Focusing on compound movements like squats, deadlifts, and bench presses because they engage multiple muscle groups and boost your metabolism. The weights are moderate to ensure you can handle them safely and build a solid foundation."
+    },
+    {
+      "date": "2023-06-23",
+      "theme": "Rest",
+      "exercises": [],
+      "running": null,
+      "reasoning": ""
+    },
+    {
+      "date": "2023-06-24",
+      "theme": "Cardio & Core",
+      "exercises": [
+        {
+          "name": "Plank",
+          "reps": "45 seconds",
+          "sets": 3,
+          "weights": "Bodyweight",
+          "status": "Completed"
+        },
+        {
+          "name": "Mountain Climbers",
+          "reps": "45 seconds",
+          "sets": 3,
+          "weights": "Bodyweight",
+          "status": "Completed"
+        },
+        {
+          "name": "Russian Twists",
+          "reps": "30 seconds",
+          "sets": 3,
+          "weights": "10 lbs",
+          "status": "Completed"
+        }
+      ],
+      "running": {
+        "type": "Steady-state Cardio",
+        "description": "30-minute moderate-intensity run",
+        "pace": "Comfortable pace",
+        "status": "User only ran for 10 minutes."
+      },
+      "reasoning": "Today's focus is on cardio and core. A moderate run will help with overall fat loss, and core exercises will target belly fat specifically. The combination will enhance your endurance while strengthening your midsection."
+    },
+    {
+      "date": "2023-06-25",
+      "theme": "Rest",
+      "exercises": [],
+      "running": null,
+      "reasoning": "Another rest day to let your muscles recover from yesterday’s workout. Ensuring you’re well-rested is key to making progress and avoiding burnout or injuries."
+    },
+    {
+      "date": "2023-06-26",
+      "theme": "Strength",
+      "exercises": [
+        {
+          "name": "Goblet Squats",
+          "reps": 12,
+          "sets": 3,
+          "weights": "35 lbs dumbbell",
+          "rest": "2 min"
+          "status": "Completed"
+        },
+        {
+          "name": "Romanian Deadlifts",
+          "reps": 12,
+          "sets": 3,
+          "weights": "70 lbs",
+          "rest": "2 min"
+          "status": "Completed"
+        },
+        {
+          "name": "Incline Bench Press",
+          "reps": 10,
+          "sets": 3,
+          "weights": "65 lbs",
+          "rest": "2 min"
+          "status": "User skipped because the bench was taken."
+        },
+        {
+          "name": "Seated Dumbbell Shoulder Press",
+          "reps": 12,
+          "sets": 3,
+          "weights": "25 lbs dumbbells",
+          "rest": "90 sec"
+          "status": "Completed"
+        }
+      ],
+      "running": null,
+      "reasoning": "Today we’re mixing in some different lifts to keep things interesting and to work your muscles in new ways. Goblet squats help with balance and leg strength. Romanian deadlifts will target your hamstrings and glutes differently than regular deadlifts. The incline bench press shifts focus to the upper chest, which complements your overall pressing strength."
+    },
+    {
+      "date": "2023-06-27",
+      "theme": "Rest",
+      "exercises": [],
+      "running": null,
+      "reasoning": "It's another rest day. Active rest like a light walk or gentle yoga can be good, but it's mostly about letting your body recover from the previous workout."
+    },
+    {
+      "date": "2023-06-28",
+      "theme": "Strength & Cardio",
+      "exercises": [
+        {
+          "name": "Lunges",
+          "reps": 12,
+          "sets": 3,
+          "weights": "Bodyweight",
+          "rest": "1 min"
+          "status": "Completed"
+        },
+        {
+          "name": "Pull-Ups (Assisted if needed)",
+          "reps": "Max",
+          "sets": 3,
+          "weights": "Bodyweight",
+          "rest": "90 sec"
+          "status": "Completed"
+        },
+        {
+          "name": "Push-Ups",
+          "reps": "Max",
+          "sets": 3,
+          "weights": "Bodyweight",
+          "rest": "90 sec"
+          "status": "Completed"
+        },
+        {
+          "name": "Plank Rows",
+          "reps": 12,
+          "sets": 3,
+          "weights": "15 lbs dumbbells",
+          "rest": "1 min"
+          "status": "User did 20 lbs instead."
+        }
+      ],
+      "running": {
+        "type": "HIIT",
+        "description": "20 minutes of alternating 1 min sprint and 1 min walk",
+        "pace": "Max effort for sprints, recovery for walk"
+          "status": "Completed"
+      },
+      "reasoning": "Finishing the week strong with a mix of bodyweight strength and high-intensity interval training (HIIT). The bodyweight exercises will improve your functional strength and overall endurance. HIIT is excellent for burning fat and improving cardiovascular fitness without taking too much time."
+    }
+  ],
+  "comments": "Great work this week! We've built a balanced plan focusing on full-body strength training and cardio to help you lose belly fat. The rest days are strategically placed for optimal recovery. Remember to stay consistent, hydrate well, and get enough sleep. See you next week!"
+}
+
+Also generate next week's plan.
+
+USER PROFILE:
+- Gender: Male
+- Age: 27
+- Height: 5ft 10inches
+- Weight: 148lbs
+- Goal: To lose belly fat
+- Training availability: Three days a week
+
+
+FITNESS STATUS:
+- Experience: Beginner (6-12 months of lifting weights in the gym)
+- 5km time: Never attempted
+- Squat 1 Rep Max: Never attempted
+- Bench 1 Rep Max: 115 lbs
+- DB Shoulder Press: 30 lbs dumbbell
+- Consecutive Pullups: 0 reps
+- Consecutive Dips: Never attempted
+
+INSTRUCTIONS:
+1. Create a 7-day workout plan, including rest days
+2. For each workout, provide specific details including weight, reps, sets, and rest periods.
+3. Tailor the plan to address the user's goal.
+4. For each day's workout, provide a "reasoning" field that explains:
+    a. Why this specific workout was chosen for the user on this day.
+    b. How it addresses the user's current fitness level and concerns.
+    c. Any modifications made to accommodate the user's strengths or weaknesses.
+The reasoning should be written in a conversational, coach-to-athlete tone. Use the user's specific data (like their 5km time or strength metrics) when relevant. Aim for 3-5 sentences that feel personal and tailored.
+
+

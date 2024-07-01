@@ -1,0 +1,172 @@
+{
+  "date": "2023-06-22",
+  "workouts": [
+    {
+      "date": "2023-06-22",
+      "theme": "Strength",
+      "exercises": [
+        {
+          "name": "Squats",
+          "reps": 10,
+          "sets": 3,
+          "weights": "95 lbs",
+          "rest": "2 min"
+        },
+        {
+          "name": "Deadlifts",
+          "reps": 10,
+          "sets": 3,
+          "weights": "95 lbs",
+          "rest": "2 min"
+        },
+        {
+          "name": "Bench Press",
+          "reps": 10,
+          "sets": 3,
+          "weights": "85 lbs",
+          "rest": "2 min"
+        },
+        {
+          "name": "Dumbbell Shoulder Press",
+          "reps": 12,
+          "sets": 3,
+          "weights": "25 lbs dumbbells",
+          "rest": "90 sec"
+        }
+      ],
+      "running": null,
+      "reasoning": "Hey there! Since you’re a beginner and your goal is to lose belly fat, we’re starting with a full-body strength workout. Focusing on compound movements like squats, deadlifts, and bench presses because they engage multiple muscle groups and boost your metabolism. The weights are moderate to ensure you can handle them safely and build a solid foundation."
+    },
+    {
+      "date": "2023-06-23",
+      "theme": "Rest",
+      "exercises": [],
+      "running": null,
+      "reasoning": "Rest days are crucial for recovery and muscle growth. You've worked hard on strength training, so take this day to let your body recuperate. It’ll help prevent injury and prepare you for the next workout."
+    },
+    {
+      "date": "2023-06-24",
+      "theme": "Cardio & Core",
+      "exercises": [
+        {
+          "name": "Plank",
+          "reps": "45 seconds",
+          "sets": 3,
+          "weights": "Bodyweight",
+          "rest": "1 min"
+        },
+        {
+          "name": "Mountain Climbers",
+          "reps": "45 seconds",
+          "sets": 3,
+          "weights": "Bodyweight",
+          "rest": "1 min"
+        },
+        {
+          "name": "Russian Twists",
+          "reps": "30 seconds",
+          "sets": 3,
+          "weights": "10 lbs",
+          "rest": "1 min"
+        }
+      ],
+      "running": {
+        "type": "Steady-state Cardio",
+        "description": "30-minute moderate-intensity run",
+        "pace": "Comfortable pace"
+      },
+      "reasoning": "Today's focus is on cardio and core. A moderate run will help with overall fat loss, and core exercises will target belly fat specifically. The combination will enhance your endurance while strengthening your midsection."
+    },
+    {
+      "date": "2023-06-25",
+      "theme": "Rest",
+      "exercises": [],
+      "running": null,
+      "reasoning": "Another rest day to let your muscles recover from yesterday’s workout. Ensuring you’re well-rested is key to making progress and avoiding burnout or injuries."
+    },
+    {
+      "date": "2023-06-26",
+      "theme": "Strength",
+      "exercises": [
+        {
+          "name": "Goblet Squats",
+          "reps": 12,
+          "sets": 3,
+          "weights": "35 lbs dumbbell",
+          "rest": "2 min"
+        },
+        {
+          "name": "Romanian Deadlifts",
+          "reps": 12,
+          "sets": 3,
+          "weights": "70 lbs",
+          "rest": "2 min"
+        },
+        {
+          "name": "Incline Bench Press",
+          "reps": 10,
+          "sets": 3,
+          "weights": "65 lbs",
+          "rest": "2 min"
+        },
+        {
+          "name": "Seated Dumbbell Shoulder Press",
+          "reps": 12,
+          "sets": 3,
+          "weights": "25 lbs dumbbells",
+          "rest": "90 sec"
+        }
+      ],
+      "running": null,
+      "reasoning": "Today we’re mixing in some different lifts to keep things interesting and to work your muscles in new ways. Goblet squats help with balance and leg strength. Romanian deadlifts will target your hamstrings and glutes differently than regular deadlifts. The incline bench press shifts focus to the upper chest, which complements your overall pressing strength."
+    },
+    {
+      "date": "2023-06-27",
+      "theme": "Rest",
+      "exercises": [],
+      "running": null,
+      "reasoning": "It's another rest day. Active rest like a light walk or gentle yoga can be good, but it's mostly about letting your body recover from the previous workout."
+    },
+    {
+      "date": "2023-06-28",
+      "theme": "Strength & Cardio",
+      "exercises": [
+        {
+          "name": "Lunges",
+          "reps": 12,
+          "sets": 3,
+          "weights": "Bodyweight",
+          "rest": "1 min"
+        },
+        {
+          "name": "Pull-Ups (Assisted if needed)",
+          "reps": "Max",
+          "sets": 3,
+          "weights": "Bodyweight",
+          "rest": "90 sec"
+        },
+        {
+          "name": "Push-Ups",
+          "reps": "Max",
+          "sets": 3,
+          "weights": "Bodyweight",
+          "rest": "90 sec"
+        },
+        {
+          "name": "Plank Rows",
+          "reps": 12,
+          "sets": 3,
+          "weights": "15 lbs dumbbells",
+          "rest": "1 min"
+        }
+      ],
+      "running": {
+        "type": "HIIT",
+        "description": "20 minutes of alternating 1 min sprint and 1 min walk",
+        "pace": "Max effort for sprints, recovery for walk"
+      },
+      "reasoning": "Finishing the week strong with a mix of bodyweight strength and high-intensity interval training (HIIT). The bodyweight exercises will improve your functional strength and overall endurance. HIIT is excellent for burning fat and improving cardiovascular fitness without taking too much time."
+    }
+  ],
+  "comments": "Great work this week! We've built a balanced plan focusing on full-body strength training and cardio to help you lose belly fat. The rest days are strategically placed for optimal recovery. Remember to stay consistent, hydrate well, and get enough sleep. See you next week!"
+}
