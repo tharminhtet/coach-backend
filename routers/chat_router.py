@@ -4,7 +4,7 @@ from typing import List, Dict, Optional
 from db_operations import DbOperations
 from datetime import datetime
 import uuid
-from services.assistant import Assistant
+from services.onboarding_assistant import Assistant
 from openai import OpenAI
 
 router = APIRouter()
@@ -78,7 +78,7 @@ def _save_chat_messages(chat_id: str, messages: List[Dict[str, str]]):
     )
 
 
-def _get_chat_history(chat_id: str) -> List[Dict[str, str]]:
+def _get_chat_history(chat_id: str) -> list[dict[str, str]]:
     """
     Retrieve chat history from the database.
     """

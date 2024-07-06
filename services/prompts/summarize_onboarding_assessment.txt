@@ -1,0 +1,20 @@
+Please summarize the user profile and fitness status based on the conversation between the user and the fitness assistant.
+
+
+Use this following format:
+### User Profile:
+- Biological Gender: Male
+- Age: 25
+- Height: 170cm
+- Weight: 70kg
+- Wellness Goals: Lose weight, Gain Muscles
+- Training Availability: 3 times a week
+
+### Fitness Status:
+- Experience Level: Intermediate
+- 5km Run Time: 15 minutes
+- Squat 1 Rep Max: 20 reps
+- Bench Press 1 Rep Max: 10 reps
+- Dumbbell Shoulder Press Max: 10 reps
+- Consecutive Pull-ups: 10 reps
+- Consecutive Dips: 10 reps

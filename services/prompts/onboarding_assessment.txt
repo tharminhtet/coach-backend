@@ -43,6 +43,7 @@ Respond in JSON format as follows:
     "max": 100,
     "unit": "kg"
   }
+  "complete": false # Set to true when the assessment is complete and user wants to generate a training plan.
 }
 ```
 
@@ -121,6 +122,23 @@ Respond in JSON format as follows:
     "max": 200,
     "unit": "kg"
   }
+}
+```
+
+4. Complete Assessment
+```json
+{
+  "response": "Thanks for sharing the information. Do you want me to go ahead and create a training plan for you?",
+  "question": {
+    "type": "boolean"
+  }
+}
+
+5. Generate Training Plan
+```json
+{
+  "response": "Great! I'm going to generate a training plan for you.",
+  "complete": true
 }
 ```
 
