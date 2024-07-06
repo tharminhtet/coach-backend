@@ -68,7 +68,8 @@ async def generateWeeklyPlan(user_id: str, chat_id: str | None = None):
         for week_id in week_ids:
             week_query = {"week_id": week_id}
             week_plan = weekly_plan_dboperations.read_one_from_mongodb(week_query)
-            del week_plan["_id"]
+            if week_plan["_id"]:
+                del week_plan["_id"]
             very_old_training_plans.append(week_plan)
 
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -97,12 +98,14 @@ async def generateWeeklyPlan(user_id: str, chat_id: str | None = None):
     fitness_plan = json.loads(response)
     week_id = f"{uuid.uuid4()}"
     fitness_plan["week_id"] = week_id
+    start_of_week = (datetime.now() - timedelta(days=datetime.now().weekday())).strftime("%Y-%m-%d")
+    fitness_plan["start_date"] = start_of_week
     weekly_plan_dboperations.write_to_mongodb(fitness_plan)
     print("Weekly training plan is successfully saved in weekly training plan db.")
 
     # add the user overall training plan with the new week training plan.
-    entry = {"week_id": week_id, "summary": ""}
-    week = f"week {fitness_plan['week']}"
+    entry = {"week_id": week_id, "start_date": start_of_week, "summary": ""}
+    week = f"week {len(week_keys)+1}"
     query = {"user_id": user_id}
     new_value = {"$set": {f"training_plan.{year}.{week}": entry}}
     training_plan_dboperations.update_from_mongodb(query, new_value)
