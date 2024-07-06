@@ -7,11 +7,13 @@ from bson.son import SON
 import os
 import json
 import uuid
+from services.onboarding_assistant import Assistant
 
 # Load .env file
 load_dotenv()
 
 router = APIRouter()
+
 
 @router.get("/generateWeeklyPlan")
 async def generateWeeklyPlan(user_id: str):
@@ -101,3 +103,17 @@ async def generateWeeklyPlan(user_id: str):
     print("Weekly training plan is successfully updated from user training plans.")
 
     return json.loads(response)
+
+
+def _get_chat_history(chat_id: str) -> list[dict[str, str]]:
+    """
+    Retrieve chat history from the database.
+    """
+    db_operations = DbOperations("chat-history")
+    chat_document = db_operations.collection.find_one({"chat_id": chat_id})
+    if chat_document and "messages" in chat_document:
+        return [
+            {"role": m["role"], "content": m["content"]}
+            for m in chat_document["messages"]
+        ]
+    return []
