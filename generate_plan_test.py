@@ -3,7 +3,6 @@ from fastapi import APIRouter, HTTPException
 from db_operations import DbOperations
 from openai import OpenAI
 from datetime import datetime
-from bson.son import SON
 import os
 import json
 import uuid
@@ -48,7 +47,6 @@ async def generateWeeklyPlan(user_id: str):
     training_plan_dboperations = DbOperations("training-plans")
     old_training_plans = None
     try:
-        # old_training_plans = training_plan_dboperations.read_from_mongodb(query_param=user_id)
         plan_query = {"user_id": user_id}
         old_training_plans = training_plan_dboperations.read_one_from_mongodb(plan_query)
         print("Successfully retrieved user's old training plans.")
