@@ -24,6 +24,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     message: str
     chat_id: str
+    question: Optional[Dict] = None
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -40,11 +41,15 @@ async def chat(request: ChatRequest):
         client = OpenAI()
         assistant = Assistant(client)
         ai_response = assistant.chat(chat_history, request.message)
-        ai_message = {"role": "assistant", "content": ai_response}
+        ai_message = {"role": "assistant", "content": ai_response.response}
         chat_history.extend([user_message, ai_message])
         _save_chat_messages(chat_id, chat_history)
 
-        return ChatResponse(message=ai_response, chat_id=chat_id)
+        return ChatResponse(
+            message=ai_response.response,
+            chat_id=chat_id,
+            question=ai_response.question.dict() if ai_response.question else None,
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
