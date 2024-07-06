@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException
 from db_operations import DbOperations
 from openai import OpenAI
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import json
 import uuid
@@ -109,6 +109,65 @@ async def generateWeeklyPlan(user_id: str, chat_id: str | None = None):
     print("Weekly training plan is successfully updated from user training plans.")
 
     return json.loads(response)
+
+
+@router.get("/getWeeklyTrainingPlan")
+async def get_weekly_training_plan(user_id: str, date: str):
+    # Convert the input date string to a datetime object
+    target_date = datetime.strptime(date, "%Y-%m-%d")
+
+    # Retrieve the training plan for the user
+    training_plan_dboperations = DbOperations("training-plans")
+    try:
+        plan_query = {"user_id": user_id}
+        training_plan = training_plan_dboperations.read_one_from_mongodb(plan_query)
+        if not training_plan:
+            raise HTTPException(
+                status_code=404, detail="Training plan not found for the user"
+            )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving training plan: {str(e)}"
+        )
+
+    # Find the correct week for the given date
+    year = str(target_date.year)
+    if year not in training_plan["training_plan"]:
+        raise HTTPException(
+            status_code=404, detail="No training plan found for the specified year"
+        )
+
+    week_id = None
+    for week, week_data in training_plan["training_plan"][year].items():
+        week_start = datetime.strptime(week_data["start_date"], "%Y-%m-%d")
+        week_end = week_start + timedelta(days=6)
+        if week_start <= target_date <= week_end:
+            week_id = week_data["week_id"]
+            break
+
+    if not week_id:
+        raise HTTPException(
+            status_code=404, detail="No matching week found for the given date"
+        )
+
+    # Retrieve the weekly training plan
+    weekly_plan_dboperations = DbOperations("weekly-training-plans")
+    try:
+        weekly_plan_query = {"week_id": week_id}
+        weekly_plan = weekly_plan_dboperations.read_one_from_mongodb(weekly_plan_query)
+        if not weekly_plan:
+            raise HTTPException(
+                status_code=404, detail="Weekly training plan not found"
+            )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving weekly training plan: {str(e)}"
+        )
+
+    # Remove the _id field from the response
+    weekly_plan.pop("_id", None)
+
+    return weekly_plan
 
 
 def _get_chat_history(chat_id: str) -> list[dict[str, str]]:
