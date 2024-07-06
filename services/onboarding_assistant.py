@@ -1,12 +1,12 @@
 from openai import OpenAI
-import json
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional
+from .openai_base import OpenAIBase
 
 
 class QuestionModel(BaseModel):
     type: str
-    options: Optional[List[str]] = None
+    options: Optional[list[str]] = None
     min: Optional[int] = None
     max: Optional[int] = None
     unit: Optional[str] = None
@@ -24,38 +24,23 @@ prompt_map = {
 }
 
 
-class Assistant:
+class OnboardingAssistant:
     def __init__(self, client: OpenAI):
-        self.client = client
+        self.client = OpenAIBase(client)
 
     def chat(self, chat_history: list[dict], user_message: str) -> ResponseModel:
-        with open("services/prompts/onboarding_assessment.txt", "r") as file:
-            assistant_system_message = file.read()
-
-        response = self.client.chat.completions.create(
-            model="gpt-4o",
-            response_format={"type": "json_object"},
-            messages=[
-                {"role": "system", "content": assistant_system_message},
-            ]
-            + chat_history
-            + [{"role": "user", "content": user_message}],
+        with open(prompt_map["onboarding_assessment"], "r") as file:
+            system_message = file.read()
+        response_data = self.client.chat_json_output(
+            chat_history, system_message, user_message
         )
-
-        response_data = json.loads(response.choices[0].message.content)
         return ResponseModel(**response_data)
 
     def summarize(self, chat_history: list[dict]) -> str:
-        with open("services/prompts/summarize_onboarding_assessment.txt", "r") as file:
-            assistant_system_message = file.read()
-
-        response = self.client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": assistant_system_message},
-            ]
-            + chat_history
-            + [{"role": "user", "content": "Summarize the content as instructed."}],
+        with open(prompt_map["summarize_onboarding_assessment"], "r") as file:
+            system_message = file.read()
+        return self.client.chat_str_output(
+            chat_history,
+            system_message,
+            "Summarize the content as instructed.",
         )
-
-        return response.choices[0].message.content

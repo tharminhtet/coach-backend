@@ -4,7 +4,7 @@ from typing import List, Dict, Optional
 from db_operations import DbOperations
 from datetime import datetime
 import uuid
-from services.onboarding_assistant import Assistant
+from services.onboarding_assistant import OnboardingAssistant
 from openai import OpenAI
 
 router = APIRouter()
@@ -40,7 +40,7 @@ async def chat(request: ChatRequest):
         user_message = {"role": "user", "content": request.message}
 
         client = OpenAI()
-        assistant = Assistant(client)
+        assistant = OnboardingAssistant(client)
         ai_response = assistant.chat(chat_history, request.message)
         ai_message = {"role": "assistant", "content": ai_response.response}
         chat_history.extend([user_message, ai_message])

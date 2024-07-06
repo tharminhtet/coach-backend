@@ -6,49 +6,45 @@ from datetime import datetime
 import os
 import json
 import uuid
-from services.onboarding_assistant import Assistant
+from services.onboarding_assistant import OnboardingAssistant
 
 # Load .env file
 load_dotenv()
 
 router = APIRouter()
 
-def _get_chat_history(chat_id: str) -> list[dict[str, str]]:
-    """
-    Retrieve chat history from the database.
-    """
-    db_operations = DbOperations("chat-history")
-    chat_document = db_operations.collection.find_one({"chat_id": chat_id})
-    if chat_document and "messages" in chat_document:
-        return [
-            {"role": m["role"], "content": m["content"]}
-            for m in chat_document["messages"]
-        ]
-    return []
-
 
 @router.get("/generateWeeklyPlan")
-async def generateWeeklyPlan(user_id: str):
+async def generateWeeklyPlan(user_id: str, chat_id: str | None = None):
 
     # retrieve user details from db
     user_details_dboperations = DbOperations("user-details")
-    try:
-        user_data = user_details_dboperations.read_from_mongodb(query_param=user_id)
-        if not user_data:
-            raise HTTPException(status_code=404, detail="User data not found")
-        print("Successfully retrieved user data.")
-    except Exception as e:
-        print(f"Error reading user data from MongoDB: {e}")
+    if chat_id:
+        # Onboard first-time user. Summarize assessment conversation.
+        chat_history = _get_chat_history(chat_id)
+        client = OpenAI()
+        assistant = OnboardingAssistant(client)
+        user_data = assistant.summarize(chat_history)
+    else:
+        try:
+            user_data = user_details_dboperations.read_from_mongodb(query_param=user_id)
+            if not user_data:
+                raise HTTPException(status_code=404, detail="User data not found")
+            print("Successfully retrieved user data.")
+        except Exception as e:
+            print(f"Error reading user data from MongoDB: {e}")
 
-    for data in user_data:
-        data.pop("_id", None)
+        for data in user_data:
+            data.pop("_id", None)
 
     # retrieve all previous weeks of user fitness plans in sorted order
     training_plan_dboperations = DbOperations("training-plans")
     old_training_plans = None
     try:
         plan_query = {"user_id": user_id}
-        old_training_plans = training_plan_dboperations.read_one_from_mongodb(plan_query)
+        old_training_plans = training_plan_dboperations.read_one_from_mongodb(
+            plan_query
+        )
         print("Successfully retrieved user's old training plans.")
     except Exception as e:
         print(f"Error reading previous training plan from MongoDB: {e}")
@@ -74,12 +70,14 @@ async def generateWeeklyPlan(user_id: str):
             week_plan = weekly_plan_dboperations.read_one_from_mongodb(week_query)
             del week_plan["_id"]
             very_old_training_plans.append(week_plan)
-        
+
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     with open("prompts/generate_fitness_plan_system_message.txt", "r") as file:
         system_message = file.read()
         system_message = system_message.replace("{user_data}", json.dumps(user_data))
-        system_message = system_message.replace("{old_training_plans}", json.dumps(very_old_training_plans))
+        system_message = system_message.replace(
+            "{old_training_plans}", json.dumps(very_old_training_plans)
+        )
     # with open("prompts/generate_fitness_plan_user_message.txt", "r") as file:
     #     user_message = file.read()
     user_message = "Create a workout plan based on the given information."
@@ -101,16 +99,27 @@ async def generateWeeklyPlan(user_id: str):
     fitness_plan["week_id"] = week_id
     weekly_plan_dboperations.write_to_mongodb(fitness_plan)
     print("Weekly training plan is successfully saved in weekly training plan db.")
-    
+
     # add the user overall training plan with the new week training plan.
-    entry = {
-        "week_id": week_id,
-        "summary": ""
-    }
-    week = f"week {fitness_plan['week']}" 
+    entry = {"week_id": week_id, "summary": ""}
+    week = f"week {fitness_plan['week']}"
     query = {"user_id": user_id}
     new_value = {"$set": {f"training_plan.{year}.{week}": entry}}
     training_plan_dboperations.update_from_mongodb(query, new_value)
     print("Weekly training plan is successfully updated from user training plans.")
 
     return json.loads(response)
+
+
+def _get_chat_history(chat_id: str) -> list[dict[str, str]]:
+    """
+    Retrieve chat history from the database.
+    """
+    db_operations = DbOperations("chat-history")
+    chat_document = db_operations.collection.find_one({"chat_id": chat_id})
+    if chat_document and "messages" in chat_document:
+        return [
+            {"role": m["role"], "content": m["content"]}
+            for m in chat_document["messages"]
+        ]
+    return []
