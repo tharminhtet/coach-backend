@@ -25,6 +25,7 @@ class ChatResponse(BaseModel):
     message: str
     chat_id: str
     question: Optional[Dict] = None
+    complete: bool
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -49,6 +50,7 @@ async def chat(request: ChatRequest):
             message=ai_response.response,
             chat_id=chat_id,
             question=ai_response.question.dict() if ai_response.question else None,
+            complete=ai_response.complete,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
