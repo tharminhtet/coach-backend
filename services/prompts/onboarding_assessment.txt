@@ -97,6 +97,7 @@ Respond in JSON format as follows:
   "question": {
     "type": "text"
   }
+  "complete": false
 }
 ```
 
@@ -107,8 +108,8 @@ Respond in JSON format as follows:
   "question": {
     "type": "multiple_choice",
     "options": ["Beginner", "Intermediate", "Advanced"]
-  },
-  "tip": "Remember, everyone starts somewhere. The key is consistent progress, not perfection!"
+  },,
+  "complete": false
 }
 ```
 
@@ -121,7 +122,8 @@ Respond in JSON format as follows:
     "min": 40,
     "max": 200,
     "unit": "kg"
-  }
+  },
+  "complete": false
 }
 ```
 
@@ -132,6 +134,7 @@ Respond in JSON format as follows:
   "question": {
     "type": "boolean"
   }
+  "complete": false
 }
 
 5. Generate Training Plan

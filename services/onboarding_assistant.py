@@ -15,6 +15,7 @@ class QuestionModel(BaseModel):
 class ResponseModel(BaseModel):
     response: str
     question: Optional[QuestionModel] = None
+    complete: bool
 
 
 prompt_map = {
@@ -27,9 +28,7 @@ class Assistant:
     def __init__(self, client: OpenAI):
         self.client = client
 
-    def chat(
-        self, chat_history: list[dict], user_message: str, task: str
-    ) -> ResponseModel:
+    def chat(self, chat_history: list[dict], user_message: str) -> ResponseModel:
         with open("services/prompts/onboarding_assessment.txt", "r") as file:
             assistant_system_message = file.read()
 
