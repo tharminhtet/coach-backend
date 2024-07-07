@@ -15,6 +15,7 @@ router = APIRouter()
 
 class UserStats(BaseModel):
     availableDays: int # how many days a person can workout
+    preferredDays: List[str] # which days a person would like to workout
     availableEquipments: List[str]
     fitnessLevel: str
     bodyWeight: int # kg 
@@ -52,5 +53,8 @@ async def uploadUserDetails(request: Request):
         training_plan_dboperations = DbOperations("training-plans")
         training_plan_dboperations.write_to_mongodb(training_plan)
         print("Successfully uploaded user data and stored the skeleton schema for user training plan.")
+        return {"status": "success", "message": "User details uploaded successfully"}, 200
     except Exception as e:
         print(f"Error writing to MongoDB: {e}")
+        return {"status": "error", "message": str(e)}, 500
+    
