@@ -3,3 +3,5 @@ python-dotenv
 pymongo
 passlib
 bcrypt
+python-multipart
+python-jose[cryptography]

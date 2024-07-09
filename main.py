@@ -53,7 +53,7 @@
 # pretty_print_user_profile(user_profile)
 
 
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI
 from user_input import router as user_input_router
 from generate_plan_test import router as generate_plan_router
 from routers.chat_router import router as chat_router
