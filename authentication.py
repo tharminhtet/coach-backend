@@ -73,7 +73,7 @@ async def login_access_for_token(form_data: OAuth2PasswordRequestForm = Depends(
                             headers={"WWW-Authenticate": "Bearer"})
 
     access_token_expires = timedelta(ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = _create_access_token(user[form_data.username]["username"], expires_delta=access_token_expires)
+    access_token = _create_access_token(user["username"], expires_delta=access_token_expires)
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/getToken")
@@ -107,4 +107,4 @@ def _authenticate_user(username: str, password: str):
     if not pwd_context.verify(password, user[username]['hashed_password']):
         return False
     
-    return user
+    return user[username]
