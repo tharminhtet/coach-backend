@@ -102,7 +102,6 @@ def _create_access_token(username: str, expires_delta: timedelta):
 def _authenticate_user(username: str, password: str):
     db_ops = DbOperations("user-profiles")
     user = db_ops.read_one_from_mongodb({username: {'$exists': True}})
-    user.pop("_id", None)
     if not user:
         return False
     if not pwd_context.verify(password, user[username]['hashed_password']):
