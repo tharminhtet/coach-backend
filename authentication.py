@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from typing import Annotated
 import os
+import re
 
 load_dotenv()
 
@@ -22,10 +23,10 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 1
 
 class CreateUserRequest(BaseModel):
-    username: str
+    email: str
     password: str
-    email: str or None = None
-    full_name: str or None = None 
+    first_name: str or None = None
+    last_name: str or None = None 
 
 class Token(BaseModel):
     access_token: str
@@ -34,27 +35,31 @@ class Token(BaseModel):
 @router.post("/register")
 async def register(userProfile: CreateUserRequest):
 
+    if not _is_valid_email(userProfile.email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Not a proper email address."
+        )
+
     db_ops = DbOperations("user-profiles")
     try: 
-        existing_user = db_ops.read_one_from_mongodb({userProfile.username: {'$exists': True}})
+        existing_user = db_ops.read_one_from_mongodb({"email": userProfile.email})
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Error reading given username from database: {str(e)}"
+            status_code=500, detail=f"Error reading given email from database: {str(e)}"
         )
     
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already exists"
+            detail="Email already exists"
         )
-    
+
     new_user = {
-        userProfile.username: {
-            "username": userProfile.username,
-            "full_name": userProfile.full_name,
-            "email": userProfile.email,
-            "hashed_password": pwd_context.hash(userProfile.password),
-        }
+        "email": userProfile.email,
+        "first_name": userProfile.first_name,
+        "last_name": userProfile.last_name,
+        "hashed_password": pwd_context.hash(userProfile.password)
     }
     try:
         db_ops.write_to_mongodb(new_user)
@@ -69,42 +74,49 @@ async def register(userProfile: CreateUserRequest):
 async def login_access_for_token(form_data: OAuth2PasswordRequestForm = Depends()):
     user = _authenticate_user(form_data.username, form_data.password)
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password", 
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password", 
                             headers={"WWW-Authenticate": "Bearer"})
 
     access_token_expires = timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
-    access_token = _create_access_token(user["username"], expires_delta=access_token_expires)
+    access_token = _create_access_token(user["email"], expires_delta=access_token_expires)
     return {"access_token": access_token, "token_type": "bearer"}
 
-@router.get("/getToken")
+@router.get("/getUser")
 async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
     try:
         payload = jwt.decode(token, os.getenv("SECRET_KEY"), algorithms=[ALGORITHM])
-        username: str = payload.get('sub')
-        if username is None:
+        email: str = payload.get('sub')
+        if email is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate user", 
                             headers={"WWW-Authenticate": "Bearer"})
-        return {'username': username}
+        return {'email': email}
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate user", 
                             headers={"WWW-Authenticate": "Bearer"})
 
-def _create_access_token(username: str, expires_delta: timedelta):
-    encode = {'sub': username}
+def _create_access_token(email: str, expires_delta: timedelta):
+    encode = {'sub': email}
     # if expires_delta is provided, add that to current time else set it as 15 minutes
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.utcnow() + timedelta(minutes=1440)
     encode.update({'exp': expire})
     return jwt.encode(encode, os.getenv("SECRET_KEY"), algorithm=ALGORITHM)
 
-def _authenticate_user(username: str, password: str):
+def _authenticate_user(email: str, password: str):
+
     db_ops = DbOperations("user-profiles")
-    user = db_ops.read_one_from_mongodb({username: {'$exists': True}})
+    user = db_ops.read_one_from_mongodb({"email": email})
     if not user:
         return False
-    if not pwd_context.verify(password, user[username]['hashed_password']):
+    if not pwd_context.verify(password, user['hashed_password']):
         return False
     
-    return user[username]
+    return user
+
+def _is_valid_email(email: str):
+
+    """Check if the email is a valid format."""
+    regex = r'^[a-z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w+$'
+    return re.match(regex, email)
