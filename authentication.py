@@ -19,7 +19,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_DAYS = 1
 
 class CreateUserRequest(BaseModel):
     username: str
@@ -72,7 +72,7 @@ async def login_access_for_token(form_data: OAuth2PasswordRequestForm = Depends(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password", 
                             headers={"WWW-Authenticate": "Bearer"})
 
-    access_token_expires = timedelta(ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token_expires = timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
     access_token = _create_access_token(user["username"], expires_delta=access_token_expires)
     return {"access_token": access_token, "token_type": "bearer"}
 
