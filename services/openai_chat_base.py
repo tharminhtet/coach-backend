@@ -1,11 +1,35 @@
 from openai import OpenAI
 import json
+import instructor
+from pydantic import BaseModel
+from rich.console import Console
+from typing import Type, Optional
 
 
 class OpenAIBase:
     def __init__(self, client: OpenAI):
         self.client = client
+        self.instructor_client = instructor.from_openai(client)
         self.model = "gpt-4o"
+
+    def chat_json_output_stream(
+        self,
+        chat_history: list[dict],
+        system_message: str,
+        user_message: str,
+        response_model: Type[BaseModel],
+    ):
+        response_stream = self.instructor_client.chat.completions.create_partial(
+            model=self.model,
+            response_model=response_model,
+            messages=[
+                {"role": "system", "content": system_message},
+            ]
+            + chat_history
+            + [{"role": "user", "content": user_message}],
+            stream=True,
+        )
+        return response_stream
 
     def chat_json_output(
         self, chat_history: list[dict], system_message: str, user_message: str

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 from db_operations import DbOperations
@@ -6,8 +7,13 @@ from datetime import datetime
 import uuid
 from services.onboarding_assistant import OnboardingAssistant
 from openai import OpenAI
+import logging
+import traceback
+import json
 
 router = APIRouter()
+logging.basicConfig(level=logging.ERROR)
+logger = logging.getLogger(__name__)
 
 
 class ChatMessage(BaseModel):
@@ -28,7 +34,7 @@ class ChatResponse(BaseModel):
     complete: bool
 
 
-@router.post("/chat", response_model=ChatResponse)
+@router.post("/chat", response_class=StreamingResponse)
 async def chat(request: ChatRequest):
     """
     Process a chat message and return a response.
@@ -41,18 +47,37 @@ async def chat(request: ChatRequest):
 
         client = OpenAI()
         assistant = OnboardingAssistant(client)
-        ai_response = assistant.chat(chat_history, request.message)
-        ai_message = {"role": "assistant", "content": ai_response.response}
-        chat_history.extend([user_message, ai_message])
-        _save_chat_messages(chat_id, chat_history)
+        ai_response_stream = assistant.chat(chat_history, request.message)
 
-        return ChatResponse(
-            message=ai_response.response,
-            chat_id=chat_id,
-            question=ai_response.question.dict() if ai_response.question else None,
-            complete=ai_response.complete,
-        )
+        def generate():
+            full_response = None
+            for extraction in ai_response_stream:
+                full_response = extraction
+                chat_response = ChatResponse(
+                    message=extraction.response if extraction.response else "",
+                    chat_id=chat_id,
+                    question=(
+                        extraction.question.model_dump()
+                        if extraction.question
+                        else None
+                    ),
+                    complete=extraction.complete if extraction.complete else False,
+                )
+                yield f"{json.dumps(chat_response.model_dump())}\n"
+
+            if full_response:
+                ai_message = {"role": "assistant", "content": full_response.response}
+                chat_history.extend([user_message, ai_message])
+                _save_chat_messages(chat_id, chat_history)
+
+        return StreamingResponse(generate(), media_type="text/event-stream")
     except Exception as e:
+        error_location = traceback.extract_tb(e.__traceback__)[-1]
+        error_file = error_location.filename
+        error_line = error_location.lineno
+        error_message = f"Error in {error_file} at line {error_line}: {str(e)}"
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
 

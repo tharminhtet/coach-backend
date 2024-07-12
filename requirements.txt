@@ -5,3 +5,6 @@ passlib
 bcrypt
 python-multipart
 python-jose[cryptography]
+instructor
+fastapi
+pydantic=2.7.4

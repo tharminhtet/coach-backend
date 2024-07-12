@@ -15,9 +15,11 @@ load_dotenv()
 
 router = APIRouter()
 
-class UpdateStatusRequest(BaseModel):    
+
+class UpdateStatusRequest(BaseModel):
     date: str
     status: List[str]
+
 
 @router.get("/generateWeeklyPlan")
 async def generateWeeklyPlan(user_id: str, chat_id: str | None = None):
@@ -48,9 +50,7 @@ async def generateWeeklyPlan(user_id: str, chat_id: str | None = None):
     training_plans = None
     try:
         plan_query = {"user_id": user_id}
-        training_plans = training_plan_dboperations.read_one_from_mongodb(
-            plan_query
-        )
+        training_plans = training_plan_dboperations.read_one_from_mongodb(plan_query)
         print("Successfully retrieved user's old training plans.")
     except Exception as e:
         print(f"Error reading previous training plan from MongoDB: {e}")
@@ -81,17 +81,24 @@ async def generateWeeklyPlan(user_id: str, chat_id: str | None = None):
                 old_weekly_training_plans.append(week_plan)
             except Exception as e:
                 raise HTTPException(
-                    status_code=500, detail=f"Error retrieving weekly training plan using week id: {str(e)}"
+                    status_code=500,
+                    detail=f"Error retrieving weekly training plan using week id: {str(e)}",
                 )
 
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    start_of_week = (datetime.now() - timedelta(days=datetime.now().weekday())).strftime("%Y-%m-%d")
+    start_of_week = (
+        datetime.now() - timedelta(days=datetime.now().weekday())
+    ).strftime("%Y-%m-%d")
     current_day = datetime.now().strftime("%Y-%m-%d")
     with open("prompts/generate_fitness_plan_system_message.txt", "r") as file:
         system_message = file.read()
         system_message = system_message.replace("{user_data}", json.dumps(user_data))
-        system_message = system_message.replace("{start_of_week}", json.dumps(start_of_week))
-        system_message = system_message.replace("{current_day}", json.dumps(current_day))
+        system_message = system_message.replace(
+            "{start_of_week}", json.dumps(start_of_week)
+        )
+        system_message = system_message.replace(
+            "{current_day}", json.dumps(current_day)
+        )
         system_message = system_message.replace(
             "{old_training_plans}", json.dumps(old_weekly_training_plans)
         )
@@ -133,9 +140,12 @@ async def generateWeeklyPlan(user_id: str, chat_id: str | None = None):
     try:
         training_plan_dboperations.update_from_mongodb(query, new_value)
     except Exception as e:
-        print(f"Error updating training plan with the new weekly training plan in MongoDB: {e}")
+        print(
+            f"Error updating training plan with the new weekly training plan in MongoDB: {e}"
+        )
         raise HTTPException(
-            status_code=500, detail=f"Error updating training plan with the new weekly training plan in MongoDB: {str(e)}"
+            status_code=500,
+            detail=f"Error updating training plan with the new weekly training plan in MongoDB: {str(e)}",
         )
     print("Weekly training plan is successfully updated from user training plans.")
 
@@ -169,13 +179,12 @@ async def get_weekly_training_plan(user_id: str, date: str):
         )
 
     week_id = None
-    for week, week_data in training_plan["training_plan"][year].items():
+    for _, week_data in training_plan["training_plan"][year].items():
         week_start = datetime.strptime(week_data["start_date"], "%Y-%m-%d")
         week_end = week_start + timedelta(days=6)
         if week_start <= target_date <= week_end:
             week_id = week_data["week_id"]
             break
-
     if not week_id:
         raise HTTPException(
             status_code=404, detail="No matching week found for the given date"
@@ -204,10 +213,10 @@ async def get_weekly_training_plan(user_id: str, date: str):
 @router.put("/updateExerciseStatus/{week_id}")
 async def updateExerciseStatus(week_id: str, request: UpdateStatusRequest):
 
-    weekly_plan_dboperations = DbOperations("weekly-training-plans")    
+    weekly_plan_dboperations = DbOperations("weekly-training-plans")
     week_query = {"week_id": week_id}
     week_plan = None
-    try: 
+    try:
         week_plan = weekly_plan_dboperations.read_one_from_mongodb(week_query)
         if not week_plan:
             raise HTTPException(
@@ -217,25 +226,31 @@ async def updateExerciseStatus(week_id: str, request: UpdateStatusRequest):
         raise HTTPException(
             status_code=500, detail=f"Error retrieving weekly training plan: {str(e)}"
         )
-    
+
     update_operations = {}
     for workout in week_plan["workouts"]:
         if workout["date"] == request.date:
             for idx in range(len(workout["exercises"])):
-                update_operations[f"workouts.$.exercises.{idx}.status"] = request.status[idx]
-    
+                update_operations[f"workouts.$.exercises.{idx}.status"] = (
+                    request.status[idx]
+                )
+
     if update_operations:
         update_query = {"$set": update_operations}
         match_query = {"week_id": week_id, "workouts.date": request.date}
-        try: 
+        try:
             weekly_plan_dboperations.update_from_mongodb(match_query, update_query)
         except Exception as e:
             raise HTTPException(
-                status_code=500, detail=f"Error updating status of weekly training plan: {str(e)}"
+                status_code=500,
+                detail=f"Error updating status of weekly training plan: {str(e)}",
             )
 
     print("Successfully updated all the statuses for: " + request.date)
-    return {"status": "success", "message": "Exercise statuses updated successfully"}, 200
+    return {
+        "status": "success",
+        "message": "Exercise statuses updated successfully",
+    }, 200
 
 
 def _get_chat_history(chat_id: str) -> list[dict[str, str]]:
@@ -250,4 +265,3 @@ def _get_chat_history(chat_id: str) -> list[dict[str, str]]:
             for m in chat_document["messages"]
         ]
     return []
-
