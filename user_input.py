@@ -1,8 +1,9 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import List
 from db_operations import DbOperations
 from datetime import datetime
+from authorization import user_or_admin_required
 import enum
 import uuid
 
@@ -30,7 +31,7 @@ class Request(BaseModel):
     stats: UserStats
 
 @router.post("/upload_user_details")
-async def uploadUserDetails(request: Request):
+async def uploadUserDetails(request: Request, _: dict = Depends(user_or_admin_required)):
     """
     Upload user's information.
     """
@@ -38,7 +39,13 @@ async def uploadUserDetails(request: Request):
     try:
         # write user information into db
         user_details = request.dict()
-        user_id = f"{uuid.uuid4()}"
+        user_profiles_db = DbOperations("user-profiles")
+        user_profile = user_profiles_db.read_one_from_mongodb({"email": user_details["username"]})
+        if not user_profile:
+            return {"status": "error", "message": "User profile not found"}, 404
+
+        user_id = user_profile["user_id"]
+        # user_id = f"{uuid.uuid4()}"
         user_details["user_id"] = user_id
         user_dboperations = DbOperations("user-details")
         user_dboperations.write_to_mongodb(user_details)

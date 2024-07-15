@@ -1,7 +1,8 @@
 from dotenv import load_dotenv
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from db_operations import DbOperations
+from authorization import admin_required, user_or_admin_required
 from openai import OpenAI
 from datetime import datetime, timedelta
 import os
@@ -22,7 +23,11 @@ class UpdateStatusRequest(BaseModel):
 
 
 @router.get("/generateWeeklyPlan")
-async def generateWeeklyPlan(user_id: str, chat_id: str | None = None):
+async def generateWeeklyPlan(
+    user_id: str, 
+    chat_id: str | None = None,
+    _: dict = Depends(user_or_admin_required)
+):
 
     # retrieve user details from db
     user_details_dboperations = DbOperations("user-details")
