@@ -43,6 +43,8 @@ async def generateWeeklyPlan(
             if not user_data:
                 raise HTTPException(status_code=404, detail="User data not found")
             print("Successfully retrieved user data.")
+        except HTTPException as he:
+            raise he
         except Exception as e:
             print(f"Error reading user data from MongoDB: {e}")
             return {"status": "error", "message": str(e)}, 500
