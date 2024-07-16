@@ -4,23 +4,23 @@ from typing import List
 from datetime import datetime
 from db_operations import DbOperations
 from authorization import user_or_admin_required
-import enum
+from enum import Enum
 
 router = APIRouter(
     prefix='/user',
     tags=['user_profile']
 )
 
-# class FitnessLevel(enum.Enum):
-#     BEGINNER = 1
-#     INTERMEDIATE = 2
-#     PROFESSIONAL = 3
+class FitnessLevel(str, Enum):
+    BEGINNER = "beginner"
+    INTERMEDIATE = "intermediate"
+    PROFESSIONAL = "professional"
 
 class UserStats(BaseModel):
     availableDays: int # how many days a person can workout
     preferredDays: List[str] # which days a person would like to workout
     availableEquipments: List[str]
-    fitnessLevel: str
+    fitnessLevel: FitnessLevel = FitnessLevel.BEGINNER
     bodyWeight: int # kg 
     height: int # cm
     goal: List[str]
@@ -43,6 +43,13 @@ async def uploadUserDetails(request: Request, _: dict = Depends(user_or_admin_re
         user_details = request.model_dump()
         user_id = await get_user_id_internal(user_details["username"])
         user_details["user_id"] = user_id
+
+        if _validate_user_details(user_id):
+            return {
+                "status": "error", 
+                "message": "The user details already exist for username: " + user_details["username"]
+            }, 400
+
         user_dboperations = DbOperations("user-details")
         user_dboperations.write_to_mongodb(user_details)
 
@@ -57,6 +64,8 @@ async def uploadUserDetails(request: Request, _: dict = Depends(user_or_admin_re
         training_plan_dboperations.write_to_mongodb(training_plan)
         print("Successfully uploaded user data and stored the skeleton schema for user training plan.")
         return {"status": "success", "message": "User details uploaded successfully"}, 200
+    except HTTPException as he:
+        raise he
     except Exception as e:
         print(f"Error writing to MongoDB: {e}")
         return {"status": "error", "message": str(e)}, 500
@@ -72,6 +81,8 @@ async def get_user_id(username: str = None):
         print("Successfully retrieved user data.")
 
         return {"user_id": user_profile["user_id"]}
+    except HTTPException as he:
+        raise he
     except Exception as e:
         print(f"Error reading from MongoDB: {e}")
         return {"status": "error", "message": str(e)}, 500
@@ -128,3 +139,19 @@ async def delete_user_profile(user_id: str, _: dict = Depends(user_or_admin_requ
 async def get_user_id_internal(username: str):
     user_profile = await get_user_id(username)
     return user_profile["user_id"]
+
+def _validate_user_details(user_id: str):
+    """
+    Check if user details for given user_id already exists
+    """
+    user_details_dboperations = DbOperations("user-details")
+    user_details = None
+    try:
+        query = {"user_id": user_id}
+        user_details = user_details_dboperations.read_one_from_mongodb(query)
+    except Exception as e:
+        error_message = f"Error reading from user-details collection for user: {user_id} with the error: {e}"
+        print(error_message)
+        return {"status": "error", "message": error_message}, 500
+    
+    return user_details is not None
