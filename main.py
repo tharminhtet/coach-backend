@@ -62,6 +62,7 @@ from user_input import router as user_input_router
 from generate_plan_test import router as generate_plan_router
 from routers.chat_router import router as chat_router
 from authentication import router as authentication_router
+from user_profile import router as user_profile_router
 
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -90,6 +91,7 @@ app.include_router(user_input_router)
 app.include_router(generate_plan_router)
 app.include_router(chat_router)
 app.include_router(authentication_router)
+app.include_router(user_profile_router)
 
 
 @app.exception_handler(Exception)

@@ -1,10 +1,11 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import List
-from db_operations import DbOperations
 from datetime import datetime
+from db_operations import DbOperations
+from user_profile import get_user_id_internal
+from authorization import user_or_admin_required
 import enum
-import uuid
 
 router = APIRouter()
 
@@ -30,21 +31,21 @@ class Request(BaseModel):
     stats: UserStats
 
 @router.post("/upload_user_details")
-async def uploadUserDetails(request: Request):
+async def uploadUserDetails(request: Request, _: dict = Depends(user_or_admin_required)):
     """
     Upload user's information.
     """
 
     try:
         # write user information into db
-        user_details = request.dict()
-        user_id = f"{uuid.uuid4()}"
+        user_details = request.model_dump()
+        user_id = get_user_id_internal(user_details["username"])
         user_details["user_id"] = user_id
         user_dboperations = DbOperations("user-details")
         user_dboperations.write_to_mongodb(user_details)
 
         # write a skeleton schema of user training plan without any plan details into db
-        training_plan_id = f"{uuid.uuid4()}"
+        # training_plan_id = f"{uuid.uuid4()}"
         training_plan = {"user_id": user_id}
         training_plan["training_plan"] = {}
         year = datetime.now().year

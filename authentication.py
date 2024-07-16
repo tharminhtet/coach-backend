@@ -7,6 +7,8 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta 
 from jose import JWTError, jwt
 from typing import Annotated
+from enum import Enum
+import uuid
 import os
 import re
 
@@ -22,11 +24,16 @@ oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/token")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 1
 
+class UserRole(str, Enum):
+    ADMIN = "admin"
+    USER = "user"
+
 class CreateUserRequest(BaseModel):
     email: str
     password: str
     first_name: str or None = None
-    last_name: str or None = None 
+    last_name: str or None = None
+    role: UserRole = UserRole.USER
 
 class Token(BaseModel):
     access_token: str
@@ -56,10 +63,12 @@ async def register(userProfile: CreateUserRequest):
         )
 
     new_user = {
+        "user_id": f"{uuid.uuid4()}",
         "email": userProfile.email,
         "first_name": userProfile.first_name,
         "last_name": userProfile.last_name,
-        "hashed_password": pwd_context.hash(userProfile.password)
+        "hashed_password": pwd_context.hash(userProfile.password),
+        "role": userProfile.role
     }
     try:
         db_ops.write_to_mongodb(new_user)
@@ -78,7 +87,7 @@ async def login_access_for_token(form_data: OAuth2PasswordRequestForm = Depends(
                             headers={"WWW-Authenticate": "Bearer"})
 
     access_token_expires = timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
-    access_token = _create_access_token(user["email"], expires_delta=access_token_expires)
+    access_token = _create_access_token(user["email"], user["role"], expires_delta=access_token_expires)
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/getUser")
@@ -86,16 +95,17 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
     try:
         payload = jwt.decode(token, os.getenv("SECRET_KEY"), algorithms=[ALGORITHM])
         email: str = payload.get('sub')
-        if email is None:
+        role: str = payload.get('role')
+        if email is None or role is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate user", 
                             headers={"WWW-Authenticate": "Bearer"})
-        return {'email': email}
+        return {'email': email, 'role': role}
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate user", 
                             headers={"WWW-Authenticate": "Bearer"})
 
-def _create_access_token(email: str, expires_delta: timedelta):
-    encode = {'sub': email}
+def _create_access_token(email: str, role: str, expires_delta: timedelta):
+    encode = {'sub': email, 'role': role}
     # if expires_delta is provided, add that to current time else set it as 15 minutes
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
