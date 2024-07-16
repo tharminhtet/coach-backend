@@ -33,6 +33,14 @@ class DbOperations:
         response = self.collection.find_one(query)
         return response
 
+    def delete_one_from_mongodb(self, query: dict = None):
+        self.collection.delete_one(query)
+        return {"status": "success", "message": "Deleted from database"}
+
+    def delete_many_from_mongodb(self, filter: dict = None):
+        result = self.collection.delete_many(filter)
+        return {"status": "success", "message": f"Deleted {result.deleted_count} documents from database"}
+
     def aggregate_from_mongodb(self, pipeline):
         response = self.collection.aggregate(pipeline=pipeline)
         return list(response)
