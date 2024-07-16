@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import List
-from db_operations import DbOperations
 from datetime import datetime
+from db_operations import DbOperations
+from user_profile import get_user_id_internal
 from authorization import user_or_admin_required
 import enum
-import uuid
 
 router = APIRouter()
 
@@ -38,20 +38,14 @@ async def uploadUserDetails(request: Request, _: dict = Depends(user_or_admin_re
 
     try:
         # write user information into db
-        user_details = request.dict()
-        user_profiles_db = DbOperations("user-profiles")
-        user_profile = user_profiles_db.read_one_from_mongodb({"email": user_details["username"]})
-        if not user_profile:
-            return {"status": "error", "message": "User profile not found"}, 404
-
-        user_id = user_profile["user_id"]
-        # user_id = f"{uuid.uuid4()}"
+        user_details = request.model_dump()
+        user_id = get_user_id_internal(user_details["username"])
         user_details["user_id"] = user_id
         user_dboperations = DbOperations("user-details")
         user_dboperations.write_to_mongodb(user_details)
 
         # write a skeleton schema of user training plan without any plan details into db
-        training_plan_id = f"{uuid.uuid4()}"
+        # training_plan_id = f"{uuid.uuid4()}"
         training_plan = {"user_id": user_id}
         training_plan["training_plan"] = {}
         year = datetime.now().year
