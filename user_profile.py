@@ -19,4 +19,5 @@ async def get_user_id(username: str = None):
         return {"status": "error", "message": str(e)}, 500
 
 async def get_user_id_internal(username: str):
-    return await get_user_id(username)
+    user_profile = await get_user_id(username)
+    return user_profile["user_id"]

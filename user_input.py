@@ -39,7 +39,7 @@ async def uploadUserDetails(request: Request, _: dict = Depends(user_or_admin_re
     try:
         # write user information into db
         user_details = request.model_dump()
-        user_id = get_user_id_internal(user_details["username"])
+        user_id = await get_user_id_internal(user_details["username"])
         user_details["user_id"] = user_id
         user_dboperations = DbOperations("user-details")
         user_dboperations.write_to_mongodb(user_details)
