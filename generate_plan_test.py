@@ -9,6 +9,7 @@ import os
 import json
 from typing import List
 import uuid
+from user_profile import get_user_id_internal
 from services.onboarding_assistant import OnboardingAssistant
 
 # Load .env file
@@ -16,24 +17,27 @@ load_dotenv()
 
 router = APIRouter()
 
+
 class UpdateStatusRequest(BaseModel):
     date: str
     status: List[str]
 
+
 @router.get("/generateWeeklyPlan")
 async def generateWeeklyPlan(
-    user_id: str, 
-    chat_id: str | None = None,
-    _: dict = Depends(user_or_admin_required)
+    chat_id: str | None = None, current_user: dict = Depends(user_or_admin_required)
 ):
-
+    user_id = await get_user_id_internal(current_user["email"])
     start_of_week = (
         datetime.now() - timedelta(days=datetime.now().weekday())
     ).strftime("%Y-%m-%d")
     year = str(datetime.now().year)
     # validate if weekly training plan is not already generated for the same week
     if not _validate_generate_weekly_plan(user_id, start_of_week, year):
-        return {"status": "error", "message": "The plan is already generate for the week: " + start_of_week}, 400
+        return {
+            "status": "error",
+            "message": "The plan is already generated for the week: " + start_of_week,
+        }, 400
 
     # retrieve user details from chat or db
     user_data = _extract_user_data(user_id=user_id, chat_id=chat_id)
@@ -41,9 +45,13 @@ async def generateWeeklyPlan(
     update_weekly_summary(user_id=user_id)
 
     # retrieve all previous weeks of user fitness plans
-    
-    old_weekly_training_plans = _get_all_old_weekly_training_plans(user_id=user_id, year = year)
-    week_number = 1 if len(old_weekly_training_plans) == 0 else len(old_weekly_training_plans)+1
+
+    old_weekly_training_plans = _get_all_old_weekly_training_plans(
+        user_id=user_id, year=year
+    )
+    week_number = (
+        1 if len(old_weekly_training_plans) == 0 else len(old_weekly_training_plans) + 1
+    )
 
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     current_day = datetime.now().strftime("%Y-%m-%d")
@@ -75,25 +83,27 @@ async def generateWeeklyPlan(
     print("Plan is successfully generated.")
     # save the new weekly training plan in weekly-training-plans collection
     week_id = _save_new_weekly_training_plan(
-        user_id = user_id,
-        fitness_plan=json.loads(response), 
-        start_of_week=start_of_week
+        user_id=user_id, fitness_plan=json.loads(response), start_of_week=start_of_week
     )
     # update the user overall training plan with the new week training plan in training-plans collection.
     _update_overall_training_plan(
-        user_id=user_id, 
-        week_id=week_id, 
-        week_number=week_number, 
+        user_id=user_id,
+        week_id=week_id,
+        week_number=week_number,
         start_of_week=start_of_week,
-        year=year)
-    
+        year=year,
+    )
+
     return json.loads(response)
 
+
 @router.get("/getWeeklyTrainingPlan")
-async def get_weekly_training_plan(user_id: str, date: str):
+async def get_weekly_training_plan(
+    date: str, current_user: dict = Depends(user_or_admin_required)
+):
     # Convert the input date string to a datetime object
     target_date = datetime.strptime(date, "%Y-%m-%d")
-
+    user_id = await get_user_id_internal(current_user["email"])
     # Retrieve the training plan for the user
     training_plan_dboperations = DbOperations("training-plans")
     try:
@@ -146,6 +156,7 @@ async def get_weekly_training_plan(user_id: str, date: str):
 
     return weekly_plan
 
+
 @router.put("/updateExerciseStatus/{week_id}")
 async def updateExerciseStatus(week_id: str, request: UpdateStatusRequest):
 
@@ -188,21 +199,23 @@ async def updateExerciseStatus(week_id: str, request: UpdateStatusRequest):
         "message": "Exercise statuses updated successfully",
     }, 200
 
+
 def update_weekly_summary(user_id: str):
     """
     update weekly summary of the last week.
     """
     training_plan_dboperations = DbOperations("training-plans")
-    try: 
+    try:
         plan_query = {"user_id": user_id}
         training_plans = training_plan_dboperations.read_one_from_mongodb(plan_query)
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Error retrieving from training-plans collection: {str(e)}"
+            status_code=500,
+            detail=f"Error retrieving from training-plans collection: {str(e)}",
         )
 
     year = str(datetime.now().year)
-    
+
     # if exist, get the latest week and update that week training plan summary
     if training_plans:
         week_keys = training_plans["training_plan"][year].keys()
@@ -211,9 +224,11 @@ def update_weekly_summary(user_id: str):
             week_id = training_plans["training_plan"][year][most_recent_week]["week_id"]
 
             weekly_plan_dboperations = DbOperations("weekly-training-plans")
-            try: 
+            try:
                 week_query = {"week_id": week_id}
-                most_recent_week_plan = weekly_plan_dboperations.read_one_from_mongodb(week_query)
+                most_recent_week_plan = weekly_plan_dboperations.read_one_from_mongodb(
+                    week_query
+                )
             except Exception as e:
                 error_message = (
                     f"Error retrieving the last week from weekly-training-plans collection "
@@ -227,7 +242,9 @@ def update_weekly_summary(user_id: str):
             client = OpenAI()
             with open("prompts/weekly_plan_summary.txt", "r") as file:
                 system_message = file.read()
-                system_message = system_message.replace("most_recent_week_plan", json.dumps(most_recent_week_plan)) 
+                system_message = system_message.replace(
+                    "most_recent_week_plan", json.dumps(most_recent_week_plan)
+                )
             user_message = "Create the summary of the last week training plan."
 
             response = client.chat.completions.create(
@@ -239,7 +256,9 @@ def update_weekly_summary(user_id: str):
             )
             response = response.choices[0].message.content
             # print(response)
-            new_value = {"$set": {f"training_plan.{year}.{most_recent_week}.summary": response}}
+            new_value = {
+                "$set": {f"training_plan.{year}.{most_recent_week}.summary": response}
+            }
             try:
                 training_plan_dboperations.update_from_mongodb(plan_query, new_value)
             except Exception as e:
@@ -250,10 +269,10 @@ def update_weekly_summary(user_id: str):
                 print(error_message)
                 raise HTTPException(status_code=500, detail=error_message)
 
-def _validate_generate_weekly_plan(user_id: str, start_date: str, year: str) -> bool:
 
+def _validate_generate_weekly_plan(user_id: str, start_date: str, year: str) -> bool:
     """
-    Check if user weekly training plan is already generated for given start_date 
+    Check if user weekly training plan is already generated for given start_date
     """
     training_plan_dboperations = DbOperations("training-plans")
     training_plans = None
@@ -267,13 +286,16 @@ def _validate_generate_weekly_plan(user_id: str, start_date: str, year: str) -> 
 
     start_date_set = set()
     for week_number in training_plans["training_plan"][year].keys():
-        start_date_set.add(training_plans["training_plan"][year][week_number]["start_date"])
+        start_date_set.add(
+            training_plans["training_plan"][year][week_number]["start_date"]
+        )
 
     return start_date not in start_date_set
 
+
 def _extract_user_data(
-    user_id: str, 
-    chat_id: str | None = None) -> list[dict[str, str]]:
+    user_id: str, chat_id: str | None = None
+) -> list[dict[str, str]]:
     """
     Retrieve user data from chat if chat_id is provided else from user-details collection.
     """
@@ -288,19 +310,25 @@ def _extract_user_data(
         try:
             user_data = user_details_dboperations.read_from_mongodb(query_param=user_id)
             if not user_data:
-                raise HTTPException(status_code=404, detail="User data not found for user_id: " + user_id)
+                raise HTTPException(
+                    status_code=404,
+                    detail="User data not found for user_id: " + user_id,
+                )
             print("Successfully retrieved user data.")
         except HTTPException as he:
             raise he
         except Exception as e:
-            error_message = f"Error reading user data for user_id: {user_id} from MongoDB: {e}"
+            error_message = (
+                f"Error reading user data for user_id: {user_id} from MongoDB: {e}"
+            )
             print(error_message)
             return {"status": "error", "message": error_message}, 500
 
         for data in user_data:
             data.pop("_id", None)
-    
+
     return user_data
+
 
 def _get_all_old_weekly_training_plans(user_id: str, year: str) -> list[dict[str, str]]:
     """
@@ -319,7 +347,7 @@ def _get_all_old_weekly_training_plans(user_id: str, year: str) -> list[dict[str
         return {"status": "error", "message": error_message}, 500
 
     # get all the week_ids and retrieve all the fitness plans based on week_ids
-    
+
     week_keys = training_plans["training_plan"][year].keys()
     week_ids = []
     for week_key in week_keys:
@@ -344,7 +372,10 @@ def _get_all_old_weekly_training_plans(user_id: str, year: str) -> list[dict[str
             raise HTTPException(status_code=500, detail=error_message)
     return old_weekly_training_plans
 
-def _save_new_weekly_training_plan(user_id: str, fitness_plan: dict, start_of_week: str) -> str: 
+
+def _save_new_weekly_training_plan(
+    user_id: str, fitness_plan: dict, start_of_week: str
+) -> str:
     """
     Save the newly generated weekly training plan in weekly-training-plans collection and return week_id
     """
@@ -365,14 +396,12 @@ def _save_new_weekly_training_plan(user_id: str, fitness_plan: dict, start_of_we
     print("Weekly training plan is successfully saved in weekly training plan db.")
     return week_id
 
+
 def _update_overall_training_plan(
-    user_id: str, 
-    week_id: str, 
-    week_number: int, 
-    start_of_week: str,
-    year: str) -> None:
+    user_id: str, week_id: str, week_number: int, start_of_week: str, year: str
+) -> None:
     """
-    Update the user overall traning plan from training-plans collection with 
+    Update the user overall traning plan from training-plans collection with
     week_id, start_date and summary of the week.
     """
     training_plan_dboperations = DbOperations("training-plans")
@@ -391,6 +420,7 @@ def _update_overall_training_plan(
         print(error_message)
         return {"status": "error", "message": error_message}, 500
     print("Weekly training plan is successfully updated from user training plans.")
+
 
 def _get_chat_history(chat_id: str) -> list[dict[str, str]]:
     """
