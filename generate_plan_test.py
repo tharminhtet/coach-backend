@@ -31,6 +31,7 @@ async def generateWeeklyPlan(
         datetime.now() - timedelta(days=datetime.now().weekday())
     ).strftime("%Y-%m-%d")
     year = str(datetime.now().year)
+    # validate if weekly training plan is not already generated for the same week
     if not _validate_generate_weekly_plan(user_id, start_of_week, year):
         return {"status": "error", "message": "The plan is already generate for the week: " + start_of_week}, 400
 
@@ -74,6 +75,7 @@ async def generateWeeklyPlan(
     print("Plan is successfully generated.")
     # save the new weekly training plan in weekly-training-plans collection
     week_id = _save_new_weekly_training_plan(
+        user_id = user_id,
         fitness_plan=json.loads(response), 
         start_of_week=start_of_week
     )
@@ -258,7 +260,6 @@ def _validate_generate_weekly_plan(user_id: str, start_date: str, year: str) -> 
     try:
         plan_query = {"user_id": user_id}
         training_plans = training_plan_dboperations.read_one_from_mongodb(plan_query)
-        print("Successfully retrieved user's old training plans.")
     except Exception as e:
         error_message = f"Error reading from training-plan collection for user: {user_id} with the error: {e}"
         print(error_message)
@@ -343,7 +344,7 @@ def _get_all_old_weekly_training_plans(user_id: str, year: str) -> list[dict[str
             raise HTTPException(status_code=500, detail=error_message)
     return old_weekly_training_plans
 
-def _save_new_weekly_training_plan(fitness_plan: dict, start_of_week: str) -> str: 
+def _save_new_weekly_training_plan(user_id: str, fitness_plan: dict, start_of_week: str) -> str: 
     """
     Save the newly generated weekly training plan in weekly-training-plans collection and return week_id
     """
@@ -351,6 +352,7 @@ def _save_new_weekly_training_plan(fitness_plan: dict, start_of_week: str) -> st
     week_id = f"{uuid.uuid4()}"
     fitness_plan["week_id"] = week_id
     fitness_plan["start_date"] = start_of_week
+    fitness_plan["user_id"] = user_id
     try:
         weekly_plan_dboperations.write_to_mongodb(fitness_plan)
     except Exception as e:

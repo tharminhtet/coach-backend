@@ -58,7 +58,6 @@ from fastapi.responses import JSONResponse
 import traceback
 import logging
 
-from user_input import router as user_input_router
 from generate_plan_test import router as generate_plan_router
 from routers.chat_router import router as chat_router
 from authentication import router as authentication_router
@@ -87,7 +86,6 @@ app.add_middleware(
 )
 
 # Register routers
-app.include_router(user_input_router)
 app.include_router(generate_plan_router)
 app.include_router(chat_router)
 app.include_router(authentication_router)
