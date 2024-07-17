@@ -9,6 +9,7 @@ import os
 import json
 from typing import List
 import uuid
+from user_profile import get_user_id_internal
 from services.onboarding_assistant import OnboardingAssistant
 
 # Load .env file
@@ -26,7 +27,7 @@ class UpdateStatusRequest(BaseModel):
 async def generateWeeklyPlan(
     chat_id: str | None = None, current_user: dict = Depends(user_or_admin_required)
 ):
-    user_id = _get_user_id(current_user)
+    user_id = await get_user_id_internal(current_user["email"])
     start_of_week = (
         datetime.now() - timedelta(days=datetime.now().weekday())
     ).strftime("%Y-%m-%d")
@@ -35,7 +36,7 @@ async def generateWeeklyPlan(
     if not _validate_generate_weekly_plan(user_id, start_of_week, year):
         return {
             "status": "error",
-            "message": "The plan is already generate for the week: " + start_of_week,
+            "message": "The plan is already generated for the week: " + start_of_week,
         }, 400
 
     # retrieve user details from chat or db
@@ -102,7 +103,7 @@ async def get_weekly_training_plan(
 ):
     # Convert the input date string to a datetime object
     target_date = datetime.strptime(date, "%Y-%m-%d")
-    user_id = _get_user_id(current_user)
+    user_id = await get_user_id_internal(current_user["email"])
     # Retrieve the training plan for the user
     training_plan_dboperations = DbOperations("training-plans")
     try:
@@ -433,11 +434,3 @@ def _get_chat_history(chat_id: str) -> list[dict[str, str]]:
             for m in chat_document["messages"]
         ]
     return []
-
-
-def _get_user_id(current_user: dict) -> str:
-    user_profiles_dboperations = DbOperations("user-profiles")
-    user_profile = user_profiles_dboperations.read_one_from_mongodb(
-        {"email": current_user["email"]}
-    )
-    return user_profile["user_id"]
