@@ -10,7 +10,7 @@ Do not backfill the passed days based on current_day. For example, don't backfil
 A week always starts from Monday and ends on Sunday.
 The workout has to make sense with respective to user fitness level.
 The plan also has to align with the user's goal and constraint. 
-For each workout in the plan, provide short specific details including weight, reps, sets, type of equipments and rest periods in the description.
+For each workout in the plan, provide short specific details including numerical weights, reps, sets, type of equipments and rest periods in the description.
 
 <Time Context>
 {current_day}
@@ -34,6 +34,7 @@ For each day's workout, provide a "reasoning" field that explains:
 The reasoning should be written in a conversational, coach-to-athlete tone. 
 coach note is about the tips and short explanation of each exercise and any comment from the status of old_training_plans
 status is for user's completion status on each exercise or running. Leave it as an empty string.
+summary is for all exercises summary of the day. Leave it as an empty string.
 
 OUTPUT FORMAT:
 Provide the workout plan in the following JSON format:
@@ -50,7 +51,8 @@ Provide the workout plan in the following JSON format:
         },
         ...
       ],
-      "reasoning": ""
+      "reasoning": "",
+      "summary": ""
     },
     {
       "date": "",

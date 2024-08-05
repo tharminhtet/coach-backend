@@ -27,6 +27,9 @@ class UpdateStatusRequest(BaseModel):
 async def generateWeeklyPlan(
     chat_id: str | None = None, current_user: dict = Depends(user_or_admin_required)
 ):
+    """
+    Generate weekly training plan for given user.
+    """
     user_id = await get_user_id_internal(current_user["email"])
     start_of_week = (
         datetime.now() - timedelta(days=datetime.now().weekday())
@@ -45,7 +48,6 @@ async def generateWeeklyPlan(
     update_weekly_summary(user_id=user_id)
 
     # retrieve all previous weeks of user fitness plans
-
     old_weekly_training_plans = _get_all_old_weekly_training_plans(
         user_id=user_id, year=year
     )
@@ -101,22 +103,14 @@ async def generateWeeklyPlan(
 async def get_weekly_training_plan(
     date: str, current_user: dict = Depends(user_or_admin_required)
 ):
+    """
+    Get weekly training plan of given user.
+    """
     # Convert the input date string to a datetime object
     target_date = datetime.strptime(date, "%Y-%m-%d")
     user_id = await get_user_id_internal(current_user["email"])
     # Retrieve the training plan for the user
-    training_plan_dboperations = DbOperations("training-plans")
-    try:
-        plan_query = {"user_id": user_id}
-        training_plan = training_plan_dboperations.read_one_from_mongodb(plan_query)
-        if not training_plan:
-            raise HTTPException(
-                status_code=404, detail="Training plan not found for the user"
-            )
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error retrieving training plan: {str(e)}"
-        )
+    training_plan = _get_training_plan(user_id)
 
     # Find the correct week for the given date
     year = str(target_date.year)
@@ -138,50 +132,25 @@ async def get_weekly_training_plan(
         )
 
     # Retrieve the weekly training plan
-    weekly_plan_dboperations = DbOperations("weekly-training-plans")
-    try:
-        weekly_plan_query = {"week_id": week_id}
-        weekly_plan = weekly_plan_dboperations.read_one_from_mongodb(weekly_plan_query)
-        if not weekly_plan:
-            raise HTTPException(
-                status_code=404, detail="Weekly training plan not found"
-            )
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error retrieving weekly training plan: {str(e)}"
-        )
-
-    # Remove the _id field from the response
-    weekly_plan.pop("_id", None)
-
+    weekly_plan = _get_weekly_training_plan(week_id)
     return weekly_plan
 
 
 @router.put("/updateExerciseStatus/{week_id}")
 async def updateExerciseStatus(week_id: str, request: UpdateStatusRequest):
-
-    weekly_plan_dboperations = DbOperations("weekly-training-plans")
-    week_query = {"week_id": week_id}
-    week_plan = None
-    try:
-        week_plan = weekly_plan_dboperations.read_one_from_mongodb(week_query)
-        if not week_plan:
-            raise HTTPException(
-                status_code=404, detail="Weekly training plan not found"
-            )
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error retrieving weekly training plan: {str(e)}"
-        )
-
+    """
+    Update exercise statuses of given date based on week_id.
+    """
+    weekly_plan = _get_weekly_training_plan(week_id)
+    # update all exercise statuses of requested date
     update_operations = {}
-    for workout in week_plan["workouts"]:
+    for workout in weekly_plan["workouts"]:
         if workout["date"] == request.date:
             for idx in range(len(workout["exercises"])):
                 update_operations[f"workouts.$.exercises.{idx}.status"] = (
                     request.status[idx]
                 )
-
+    weekly_plan_dboperations = DbOperations("weekly-training-plans")
     if update_operations:
         update_query = {"$set": update_operations}
         match_query = {"week_id": week_id, "workouts.date": request.date}
@@ -194,26 +163,46 @@ async def updateExerciseStatus(week_id: str, request: UpdateStatusRequest):
             )
 
     print("Successfully updated all the statuses for: " + request.date)
-    return {
-        "status": "success",
-        "message": "Exercise statuses updated successfully",
-    }, 200
 
+    # update workout summary of given date.
+    daily_plan = _get_daily_training_plan(week_id, request.date)
+    client = OpenAI()
+    with open("prompts/daily_plan_summary.txt", "r") as file:
+        system_message = file.read()
+        system_message = system_message.replace(
+            "daily_plan", json.dumps(daily_plan)
+        )
+    user_message = "Create the short summary of the given day training plan."
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": user_message},
+        ],
+    )
+    response = response.choices[0].message.content
+    daily_plan_summary = {f"workouts.$.summary": (response)}
 
-def update_weekly_summary(user_id: str):
-    """
-    update weekly summary of the last week.
-    """
-    training_plan_dboperations = DbOperations("training-plans")
+    update_query = {"$set": daily_plan_summary}
+    match_query = {"week_id": week_id, "workouts.date": request.date}
     try:
-        plan_query = {"user_id": user_id}
-        training_plans = training_plan_dboperations.read_one_from_mongodb(plan_query)
+        weekly_plan_dboperations.update_from_mongodb(match_query, update_query)
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Error retrieving from training-plans collection: {str(e)}",
+            detail=f"Error updating status of weekly training plan: {str(e)}",
         )
 
+    return {
+        "status": "success",
+        "message": "Exercise statuses and summary are updated successfully",
+    }, 200
+
+def update_weekly_summary(user_id: str):
+    """
+    Update weekly summary of the last week.
+    """
+    training_plans = _get_training_plan(user_id)
     year = str(datetime.now().year)
 
     # if exist, get the latest week and update that week training plan summary
@@ -223,22 +212,7 @@ def update_weekly_summary(user_id: str):
             most_recent_week = sorted(week_keys)[-1]
             week_id = training_plans["training_plan"][year][most_recent_week]["week_id"]
 
-            weekly_plan_dboperations = DbOperations("weekly-training-plans")
-            try:
-                week_query = {"week_id": week_id}
-                most_recent_week_plan = weekly_plan_dboperations.read_one_from_mongodb(
-                    week_query
-                )
-            except Exception as e:
-                error_message = (
-                    f"Error retrieving the last week from weekly-training-plans collection "
-                    f"for week_id: {week_id} and user_id: {user_id} with the error: {str(e)}"
-                )
-                print(error_message)
-                raise HTTPException(status_code=500, detail=error_message)
-            if most_recent_week_plan["_id"]:
-                del most_recent_week_plan["_id"]
-
+            most_recent_week_plan = _get_weekly_training_plan(week_id)
             client = OpenAI()
             with open("prompts/weekly_plan_summary.txt", "r") as file:
                 system_message = file.read()
@@ -259,6 +233,8 @@ def update_weekly_summary(user_id: str):
             new_value = {
                 "$set": {f"training_plan.{year}.{most_recent_week}.summary": response}
             }
+            training_plan_dboperations = DbOperations("training-plans")
+            plan_query = {"user_id": user_id}
             try:
                 training_plan_dboperations.update_from_mongodb(plan_query, new_value)
             except Exception as e:
@@ -272,18 +248,9 @@ def update_weekly_summary(user_id: str):
 
 def _validate_generate_weekly_plan(user_id: str, start_date: str, year: str) -> bool:
     """
-    Check if user weekly training plan is already generated for given start_date
+    Check if user weekly training plan is already generated for given start_date.
     """
-    training_plan_dboperations = DbOperations("training-plans")
-    training_plans = None
-    try:
-        plan_query = {"user_id": user_id}
-        training_plans = training_plan_dboperations.read_one_from_mongodb(plan_query)
-    except Exception as e:
-        error_message = f"Error reading from training-plan collection for user: {user_id} with the error: {e}"
-        print(error_message)
-        return {"status": "error", "message": error_message}, 500
-
+    training_plans = _get_training_plan(user_id)
     start_date_set = set()
     for week_number in training_plans["training_plan"][year].keys():
         start_date_set.add(
@@ -335,19 +302,9 @@ def _get_all_old_weekly_training_plans(user_id: str, year: str) -> list[dict[str
     Retrieve and return the fitness plans of all the past weeks.
     """
     # TODO: this will need to be updated to traverse through all the previous years
-    training_plan_dboperations = DbOperations("training-plans")
-    training_plans = None
-    try:
-        plan_query = {"user_id": user_id}
-        training_plans = training_plan_dboperations.read_one_from_mongodb(plan_query)
-        print("Successfully retrieved user's old training plans.")
-    except Exception as e:
-        error_message = f"Error reading from training-plan collection for user: {user_id} with the error: {e}"
-        print(error_message)
-        return {"status": "error", "message": error_message}, 500
+    training_plans = _get_training_plan(user_id)
 
     # get all the week_ids and retrieve all the fitness plans based on week_ids
-
     week_keys = training_plans["training_plan"][year].keys()
     week_ids = []
     for week_key in week_keys:
@@ -434,3 +391,79 @@ def _get_chat_history(chat_id: str) -> list[dict[str, str]]:
             for m in chat_document["messages"]
         ]
     return []
+
+def _get_daily_training_plan(week_id: str, date: str):
+    """
+    Get daily training_plan based on week_id and given date.
+    """
+    weekly_plan_dboperations = DbOperations("weekly-training-plans")
+    date_query = {
+    "week_id": week_id,
+    "workouts.date": date
+    }
+    projection = {
+        "workouts.$": 1  # to return only the matching element in the workouts array
+    }
+    daily_plan = None
+    try:
+        result = weekly_plan_dboperations.read_one_from_mongodb_with_projection(date_query, projection)
+        if not result:
+            raise HTTPException(
+                status_code=404, detail=f"No workout found for date: {date}"
+            )
+        daily_plan = result['workouts'][0]
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(
+                status_code=500,
+                detail=f"Error reading weekly training plan for date: {date} with error: {str(e)}"
+            )
+    return daily_plan
+
+def _get_weekly_training_plan(week_id: str):
+    """
+    Get weekly training_plan based on week_id.
+    """
+    weekly_plan_dboperations = DbOperations("weekly-training-plans")
+    weekly_plan = None
+    try:
+        weekly_plan_query = {"week_id": week_id}
+        weekly_plan = weekly_plan_dboperations.read_one_from_mongodb(weekly_plan_query)
+        if not weekly_plan:
+            raise HTTPException(
+                status_code=404, detail="Weekly training plan not found"
+            )
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving weekly training plan: {str(e)}"
+        )
+
+    # Remove the _id field from the response
+    if weekly_plan["_id"]:
+        weekly_plan.pop("_id", None)
+
+    return weekly_plan
+
+def _get_training_plan(user_id: str):
+    """
+    Get training_plan based on user_id.
+    """
+    training_plan_dboperations = DbOperations("training-plans")
+    training_plans = None
+    try:
+        plan_query = {"user_id": user_id}
+        training_plans = training_plan_dboperations.read_one_from_mongodb(plan_query)
+        if not training_plans:
+            raise HTTPException(
+                status_code=404, detail="Training plan not found for the user: " + user_id
+            )
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving training plan for user: {user_id} with error: {str(e)}"
+        )
+    return training_plans

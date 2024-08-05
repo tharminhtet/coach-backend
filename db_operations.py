@@ -33,6 +33,10 @@ class DbOperations:
         response = self.collection.find_one(query)
         return response
 
+    def read_one_from_mongodb_with_projection(self, query: dict = None, projection: dict = None):
+        response = self.collection.find_one(query, projection)
+        return response
+
     def delete_one_from_mongodb(self, query: dict = None):
         self.collection.delete_one(query)
         return {"status": "success", "message": "Deleted from database"}
