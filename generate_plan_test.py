@@ -133,7 +133,6 @@ async def get_weekly_training_plan(
 
     # Retrieve the weekly training plan
     weekly_plan = _get_weekly_training_plan(week_id)
-
     return weekly_plan
 
 
