@@ -101,9 +101,9 @@ async def delete_user_profile(user_id: str, current_user: dict = Depends(user_or
     query = {"user_id": user_id}
     
     collections = [
-        ("user-profiles", "read_one_from_mongodb"),
-        ("user-details", "read_one_from_mongodb"),
-        ("training-plans", "read_one_from_mongodb")
+        ("user-profiles", "read_one_from_mongodb")
+        # ("user-details", "read_one_from_mongodb"),
+        # ("training-plans", "read_one_from_mongodb")
     ]
 
     # Check if user exists in all collections
