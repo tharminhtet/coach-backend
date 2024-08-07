@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
-from db_operations import DbOperations
+from db.db_operations import DbOperations
 from passlib.context import CryptContext 
 from datetime import datetime, timedelta 
 from jose import JWTError, jwt

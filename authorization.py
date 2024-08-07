@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordBearer
 from typing import List
 from enum import Enum
 
-from authentication import get_current_user
+from routers.auth.authentication import get_current_user
 
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/token")
 

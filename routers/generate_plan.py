@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from db_operations import DbOperations
+from db.db_operations import DbOperations
 from authorization import admin_required, user_or_admin_required
 from openai import OpenAI
 from datetime import datetime, timedelta
@@ -9,7 +9,7 @@ import os
 import json
 from typing import List
 import uuid
-from user_profile import get_user_id_internal
+from routers.user_profile import get_user_id_internal
 from services.onboarding_assistant import OnboardingAssistant
 
 # Load .env file

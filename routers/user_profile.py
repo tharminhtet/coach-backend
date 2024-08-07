@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List
 from datetime import datetime
-from db_operations import DbOperations
+from db.db_operations import DbOperations
 from authorization import user_or_admin_required
 from enum import Enum
 
