@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Dict, Optional
-from db_operations import DbOperations
+from db.db_operations import DbOperations
 from datetime import datetime
 import uuid
 from services.onboarding_assistant import OnboardingAssistant
