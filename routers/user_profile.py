@@ -36,10 +36,10 @@ class Request(BaseModel):
     stats: UserStats
 
 class UpdateUserDetailsRequest(BaseModel):
-    user_detail_field: str
+    user_details_field: str
     value: Union[int, str, List[str], FitnessLevel]
 
-@router.post("/upload_user_details")
+@router.post("/uploadUserDetails")
 async def uploadUserDetails(request: Request, current_user: dict = Depends(user_or_admin_required)):
     """
     Upload user's information, equipment, goal and available dates.
@@ -101,8 +101,8 @@ async def update_user_details(
     user_dboperations = DbOperations("user-details")
 
     try:
-        _validate_update_user_details(request.user_detail_field, request.value)
-        update_query = {"$set": {request.user_detail_field: request.value}}
+        _validate_update_user_details(request.user_details_field, request.value)
+        update_query = {"$set": {request.user_details_field: request.value}}
         result = user_dboperations.update_from_mongodb({"user_id": user_id}, update_query)
 
         if result.modified_count == 0:
@@ -113,7 +113,7 @@ async def update_user_details(
 
         return {
             "status": "success", 
-            "message": f"User detail {request.user_detail_field} is updated successfully"
+            "message": f"User detail {request.user_details_field} is updated successfully"
         }, 200
 
     except HTTPException as he:
@@ -235,9 +235,9 @@ async def get_user_id_internal(username: str):
     user_profile = await get_user_id(username)
     return user_profile["user_id"]
 
-def _validate_update_user_details(user_detail_field: str, value: Union[int, str, List[str], FitnessLevel]):
+def _validate_update_user_details(user_details_field: str, value: Union[int, str, List[str], FitnessLevel]):
     """
-    Validate if user_detail_field and its value is valid type.
+    Validate if user_details_field and its value is valid type.
     """
     valid_fields = [
         "age", "gender",
@@ -245,14 +245,14 @@ def _validate_update_user_details(user_detail_field: str, value: Union[int, str,
         "stats.fitnessLevel", "stats.bodyWeight", "stats.height",
         "stats.goal", "stats.constraint"
     ]
-    if user_detail_field not in valid_fields:
-        error_message = "Invalid user_detail_field."
+    if user_details_field not in valid_fields:
+        error_message = "Invalid user_details_field."
         logger.error(error_message)
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=400, detail=error_message)
     
     # Additional validation for FitnessLevel
-    if user_detail_field == "stats.fitnessLevel" and value not in FitnessLevel.__members__:
+    if user_details_field == "stats.fitnessLevel" and value not in FitnessLevel.__members__:
         error_message = f"Invalid fitness level. Valid levels are: {', '.join(FitnessLevel.__members__)}"
         logger.error(error_message)
         logger.error(traceback.format_exc())
@@ -262,25 +262,25 @@ def _validate_update_user_details(user_detail_field: str, value: Union[int, str,
     int_fields = ["age", "stats.availableDays", "stats.bodyWeight", "stats.height"]
     list_fields = ["stats.preferredDays", "stats.availableEquipments", "stats.goal", "stats.constraint"]
     
-    if user_detail_field in int_fields and not isinstance(value, int):
-        error_message = f"{user_detail_field} must be an integer."
+    if user_details_field in int_fields and not isinstance(value, int):
+        error_message = f"{user_details_field} must be an integer."
         logger.error(error_message)
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=400, detail=error_message)
     
-    if user_detail_field in list_fields and not isinstance(value, list):
-        error_message = f"{user_detail_field} must be a list of strings."
+    if user_details_field in list_fields and not isinstance(value, list):
+        error_message = f"{user_details_field} must be a list of strings."
         logger.error(error_message)
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=400, detail=error_message)
     
-    if user_detail_field in list_fields and not all(isinstance(item, str) for item in value):
-        error_message = f"All items in {user_detail_field} must be strings."
+    if user_details_field in list_fields and not all(isinstance(item, str) for item in value):
+        error_message = f"All items in {user_details_field} must be strings."
         logger.error(error_message)
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=400, detail=error_message)
     
-    if user_detail_field == "gender" and not isinstance(value, str):
+    if user_details_field == "gender" and not isinstance(value, str):
         error_message = "Gender must be a string."
         logger.error(error_message)
         logger.error(traceback.format_exc())
