@@ -11,6 +11,8 @@ from enum import Enum
 import uuid
 import os
 import re
+import logging
+import traceback
 
 load_dotenv()
 
@@ -23,6 +25,9 @@ oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 1
+
+logging.basicConfig(level=logging.ERROR)
+logger = logging.getLogger(__name__)
 
 class UserRole(str, Enum):
     ADMIN = "admin"
@@ -43,23 +48,30 @@ class Token(BaseModel):
 async def register(userProfile: CreateUserRequest):
 
     if not _is_valid_email(userProfile.email):
+        error_message = "Not a proper email address."
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Not a proper email address."
+            status_code=status.HTTP_400_BAD_REQUEST, detail=error_message
         )
 
     db_ops = DbOperations("user-profiles")
     try: 
         existing_user = db_ops.read_one_from_mongodb({"email": userProfile.email})
     except Exception as e:
+        error_message = f"Error reading given email from database: {str(e)}"
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
         raise HTTPException(
-            status_code=500, detail=f"Error reading given email from database: {str(e)}"
+            status_code=500, detail=error_message
         )
     
     if existing_user:
+        error_message = "Email already exists."
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already exists"
+            status_code=status.HTTP_400_BAD_REQUEST, detail=error_message
         )
 
     new_user = {
@@ -73,8 +85,11 @@ async def register(userProfile: CreateUserRequest):
     try:
         db_ops.write_to_mongodb(new_user)
     except Exception as e:
+        error_message = f"Error saving user login profile while registering in MongoDB: {str(e)}"
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
         raise HTTPException(
-            status_code=500, detail=f"Error saving user login profile while registering: {str(e)}"
+            status_code=500, detail=error_message
         )
     
     return {"status": "success", "message": "User registered successfully"}
@@ -83,7 +98,10 @@ async def register(userProfile: CreateUserRequest):
 async def login_access_for_token(form_data: OAuth2PasswordRequestForm = Depends()):
     user = _authenticate_user(form_data.username, form_data.password)
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password", 
+        error_message = "Incorrect email or password."
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=error_message, 
                             headers={"WWW-Authenticate": "Bearer"})
 
     access_token_expires = timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
@@ -97,11 +115,17 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
         email: str = payload.get('sub')
         role: str = payload.get('role')
         if email is None or role is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate user", 
+            error_message = "Could not validate user as email or role is empty."
+            logger.error(error_message)
+            logger.error(traceback.format_exc())
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=error_message, 
                             headers={"WWW-Authenticate": "Bearer"})
         return {'email': email, 'role': role}
     except JWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate user", 
+        error_message = "Could not validate user"
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=error_message, 
                             headers={"WWW-Authenticate": "Bearer"})
 
 def _create_access_token(email: str, role: str, expires_delta: timedelta):
