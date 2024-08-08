@@ -159,5 +159,4 @@ def _validate_user_details(user_id: str):
         print(error_message)
         return {"status": "error", "message": error_message}, 500
     
-    print(user_details is not None)
     return user_details is not None
