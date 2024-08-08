@@ -5,11 +5,15 @@ from datetime import datetime
 from db.db_operations import DbOperations
 from authorization import user_or_admin_required
 from enum import Enum
+import logging
+import traceback
 
 router = APIRouter(
     prefix='/user',
     tags=['user_profile']
 )
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class FitnessLevel(str, Enum):
     BEGINNER = "beginner"
@@ -37,23 +41,32 @@ async def uploadUserDetails(request: Request, current_user: dict = Depends(user_
     Upload user's information, equipment, goal and available dates.
     """
 
+    user_id = await get_user_id_internal(current_user["email"])
+    # write user details into db
     try:
-        # write user information into db
         user_details = request.model_dump()
-        user_id = await get_user_id_internal(current_user["email"])
         user_details["user_id"] = user_id
 
         if _validate_user_details(user_id):
+            error_message = f'The user details already exist for username: {current_user["email"]}'
+            logger.error(error_message)
+            logger.error(traceback.format_exc())
             return {
-                "status": "error", 
-                "message": "The user details already exist for username: " + current_user["email"]
+                "status": "error", "message": error_message
             }, 400
 
         user_dboperations = DbOperations("user-details")
         user_dboperations.write_to_mongodb(user_details)
-
-        # write a skeleton schema of user training plan without any plan details into db
-        # training_plan_id = f"{uuid.uuid4()}"
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        error_message = f'Error writing user-details for {current_user["email"]} in MongoDB: {str(e)}'
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        return {"status": "error", "message": error_message}, 500
+    
+    # write a skeleton schema of user training plan without any plan details into db
+    try:
         training_plan = {"user_id": user_id}
         training_plan["training_plan"] = {}
         year = datetime.now().year
@@ -61,13 +74,16 @@ async def uploadUserDetails(request: Request, current_user: dict = Depends(user_
         training_plan["training_plan"]["summary"] = ""
         training_plan_dboperations = DbOperations("training-plans")
         training_plan_dboperations.write_to_mongodb(training_plan)
-        print("Successfully uploaded user data and stored the skeleton schema for user training plan.")
+        logger.info("Successfully uploaded user data and stored the skeleton schema for user training plan.")
         return {"status": "success", "message": "User details uploaded successfully"}, 200
     except HTTPException as he:
         raise he
     except Exception as e:
-        print(f"Error writing to MongoDB: {e}")
-        return {"status": "error", "message": str(e)}, 500
+        error_message = f'Error creating skeleton training plan for {current_user["email"]} in MongoDB: {str(e)}'
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        return {"status": "error", "message": error_message}, 500
+
 
 @router.get("/getUserId")
 async def get_user_id(username: str = None):
@@ -76,15 +92,20 @@ async def get_user_id(username: str = None):
     try:
         user_profile = user_profiles_db.read_one_from_mongodb({"email": username})
         if not user_profile:
-            raise HTTPException(status_code=404, detail="User profile is not found")
-        print("Successfully retrieved user data.")
+            error_message = f"User profile is not found"
+            logger.error(error_message)
+            logger.error(traceback.format_exc())
+            raise HTTPException(status_code=404, detail=error_message)
+        logger.info("Successfully retrieved user data.")
 
         return {"user_id": user_profile["user_id"]}
     except HTTPException as he:
         raise he
     except Exception as e:
-        print(f"Error reading from MongoDB: {e}")
-        return {"status": "error", "message": str(e)}, 500
+        error_message = f'Error reading user_id for {username} in MongoDB: {str(e)}'
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        return {"status": "error", "message": error_message}, 500
 
 @router.delete("/deleteUserProfile")
 async def delete_user_profile(current_user: dict = Depends(user_or_admin_required)):
@@ -107,12 +128,17 @@ async def delete_user_profile(current_user: dict = Depends(user_or_admin_require
         try:
             result = getattr(db_operations, read_method)(query)
             if not result:
-                raise HTTPException(status_code=404, detail=f"User with id {user_id} not found in {collection}")
+                error_message = f"User with id {user_id} not found in {collection}"
+                logger.error(error_message)
+                logger.error(traceback.format_exc())
+                raise HTTPException(status_code=404, detail=error_message)
         except HTTPException as he:
             raise he
         except Exception as e:
-            print(f"Error checking {collection}: {e}")
-            raise HTTPException(status_code=500, detail=f"Error checking {collection}: {str(e)}")
+            error_message = f"Error checking {collection}: {str(e)}"
+            logger.error(error_message)
+            logger.error(traceback.format_exc())
+            raise HTTPException(status_code=500, detail=error_message)
 
     # Delete if user exists in all collections
     delete_operations = [
@@ -128,7 +154,8 @@ async def delete_user_profile(current_user: dict = Depends(user_or_admin_require
             getattr(db_operations, delete_method)(query)
         except Exception as e:
             error_message = f"Error deleting from {collection} collection for user_id: {user_id} with the error: {e}"
-            print(error_message)
+            logger.error(error_message)
+            logger.error(traceback.format_exc())
             raise HTTPException(status_code=500, detail=error_message)
 
     return {
@@ -152,7 +179,8 @@ def _validate_user_details(user_id: str):
         
     except Exception as e:
         error_message = f"Error reading from user-details collection for user: {user_id} with the error: {e}"
-        print(error_message)
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
         return {"status": "error", "message": error_message}, 500
     
     return user_details is not None
