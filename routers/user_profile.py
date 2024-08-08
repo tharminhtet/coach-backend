@@ -87,16 +87,12 @@ async def get_user_id(username: str = None):
         return {"status": "error", "message": str(e)}, 500
 
 @router.delete("/deleteUserProfile")
-async def delete_user_profile(user_id: str, current_user: dict = Depends(user_or_admin_required)):
+async def delete_user_profile(current_user: dict = Depends(user_or_admin_required)):
     """
     Delete everything associated with given user_id: 
     user_profile, user_details, training_plan, weekly_traning_plan
     """
-    # Check if the current user is authorized to delete this profile.
-    current_user_id = await get_user_id_internal(current_user['email'])
-    if current_user['role'] != 'admin' and current_user_id != user_id:
-        raise HTTPException(status_code=403, detail="You don't have permission to delete this user profile")
-    
+    user_id = await get_user_id_internal(current_user['email'])   
     query = {"user_id": user_id}
     
     collections = [
