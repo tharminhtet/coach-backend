@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from typing import List
+from typing import List, Union
 from datetime import datetime
 from db.db_operations import DbOperations
 from authorization import user_or_admin_required
@@ -34,6 +34,10 @@ class Request(BaseModel):
     age: int
     gender: str
     stats: UserStats
+
+class UpdateUserDetailsRequest(BaseModel):
+    user_detail_field: str
+    value: Union[int, str, List[str], FitnessLevel]
 
 @router.post("/upload_user_details")
 async def uploadUserDetails(request: Request, current_user: dict = Depends(user_or_admin_required)):
@@ -83,6 +87,70 @@ async def uploadUserDetails(request: Request, current_user: dict = Depends(user_
         logger.error(error_message)
         logger.error(traceback.format_exc())
         return {"status": "error", "message": error_message}, 500
+
+
+@router.put("/updateUserDetails")
+async def update_user_details(
+    request: UpdateUserDetailsRequest,
+    current_user: dict = Depends(user_or_admin_required)
+):
+    """
+    Update specific user details field for current user.
+    """
+    user_id = await get_user_id_internal(current_user["email"])
+    user_dboperations = DbOperations("user-details")
+
+    try:
+        if _validate_update_user_details(request.user_detail_field, request.value):
+            update_query = {"$set": {request.user_detail_field: request.value}}
+            result = user_dboperations.update_from_mongodb({"user_id": user_id}, update_query)
+
+            if result.modified_count == 0:
+                error_message = "User details not found or no changes is made"
+                logger.error(error_message)
+                logger.error(traceback.format_exc())
+                raise HTTPException(status_code=404, detail=error_message)
+
+            return {
+                "status": "success", 
+                "message": f"User detail {request.user_detail_field} is updated successfully"
+                }, 200
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        error_message = f'Error updating user details for {current_user["email"]} in MongoDB: {str(e)}'
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        return {"status": "error", "message": error_message}, 500
+
+@router.get("/getUserDetails")
+async def get_user_details(current_user: dict = Depends(user_or_admin_required)):
+    """
+    Retrieve user details for the current user.
+    """
+    user_id = await get_user_id_internal(current_user["email"])
+    user_dboperations = DbOperations("user-details")
+
+    try:
+        user_details = user_dboperations.read_one_from_mongodb({"user_id": user_id})
+        if not user_details:
+            error_message = f"User details not found for user_id: {user_id}"
+            logger.error(error_message)
+            logger.error(traceback.format_exc())
+            raise HTTPException(status_code=404, detail=error_message)
+
+        # Remove the _id field from the response
+        user_details.pop('_id', None)
+        return user_details
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        error_message = f'Error retrieving user details for {current_user["email"]} from MongoDB: {str(e)}'
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=error_message)
 
 
 @router.get("/getUserId")
@@ -166,6 +234,59 @@ async def delete_user_profile(current_user: dict = Depends(user_or_admin_require
 async def get_user_id_internal(username: str):
     user_profile = await get_user_id(username)
     return user_profile["user_id"]
+
+def _validate_update_user_details(user_detail_field: str, value: Union[int, str, List[str], FitnessLevel]):
+    """
+    Validate if user_detail_field and its value is valid type.
+    """
+    valid_fields = [
+        "age", "gender",
+        "stats.availableDays", "stats.preferredDays", "stats.availableEquipments",
+        "stats.fitnessLevel", "stats.bodyWeight", "stats.height",
+        "stats.goal", "stats.constraint"
+    ]
+    if user_detail_field not in valid_fields:
+        error_message = "Invalid user_detail_field."
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=400, detail=error_message)
+    
+    # Additional validation for FitnessLevel
+    if user_detail_field == "stats.fitnessLevel" and value not in FitnessLevel.__members__:
+        error_message = f"Invalid fitness level. Valid levels are: {', '.join(FitnessLevel.__members__)}"
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=400, detail=error_message)
+
+    # Additional type validations
+    int_fields = ["age", "stats.availableDays", "stats.bodyWeight", "stats.height"]
+    list_fields = ["stats.preferredDays", "stats.availableEquipments", "stats.goal", "stats.constraint"]
+    
+    if user_detail_field in int_fields and not isinstance(value, int):
+        error_message = f"{user_detail_field} must be an integer."
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=400, detail=error_message)
+    
+    if user_detail_field in list_fields and not isinstance(value, list):
+        error_message = f"{user_detail_field} must be a list of strings."
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=400, detail=error_message)
+    
+    if user_detail_field in list_fields and not all(isinstance(item, str) for item in value):
+        error_message = f"All items in {user_detail_field} must be strings."
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=400, detail=error_message)
+    
+    if user_detail_field == "gender" and not isinstance(value, str):
+        error_message = "Gender must be a string."
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=400, detail=error_message)
+    
+    return True
 
 def _validate_user_details(user_id: str):
     """

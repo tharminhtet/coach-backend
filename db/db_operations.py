@@ -50,7 +50,7 @@ class DbOperations:
         return list(response)
 
     def update_from_mongodb(self, query_param, new_value):
-        self.collection.update_one(query_param, new_value)
+        return self.collection.update_one(query_param, new_value)
         # if result.modified_count > 0:
         #     updated_doc = self.collection.find_one(query_param)
         #     updated_doc['_id'] = str(updated_doc['_id'])
