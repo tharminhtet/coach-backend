@@ -46,7 +46,7 @@ async def uploadUserDetails(request: Request, current_user: dict = Depends(user_
         if _validate_user_details(user_id):
             return {
                 "status": "error", 
-                "message": "The user details already exist for user_id: " + user_id
+                "message": "The user details already exist for username: " + current_user["email"]
             }, 400
 
         user_dboperations = DbOperations("user-details")
