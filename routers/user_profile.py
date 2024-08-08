@@ -114,7 +114,7 @@ async def update_user_details(
         return {
             "status": "success", 
             "message": f"User detail {request.user_detail_field} is updated successfully"
-            }, 200
+        }, 200
 
     except HTTPException as he:
         raise he
