@@ -153,7 +153,7 @@ def _validate_user_details(user_id: str):
     try:
         query = {"user_id": user_id}
         user_details = user_details_dboperations.read_one_from_mongodb(query)
-        # print(user_details)
+        
     except Exception as e:
         error_message = f"Error reading from user-details collection for user: {user_id} with the error: {e}"
         print(error_message)
