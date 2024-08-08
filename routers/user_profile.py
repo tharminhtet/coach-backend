@@ -101,20 +101,20 @@ async def update_user_details(
     user_dboperations = DbOperations("user-details")
 
     try:
-        if _validate_update_user_details(request.user_detail_field, request.value):
-            update_query = {"$set": {request.user_detail_field: request.value}}
-            result = user_dboperations.update_from_mongodb({"user_id": user_id}, update_query)
+        _validate_update_user_details(request.user_detail_field, request.value)
+        update_query = {"$set": {request.user_detail_field: request.value}}
+        result = user_dboperations.update_from_mongodb({"user_id": user_id}, update_query)
 
-            if result.modified_count == 0:
-                error_message = "User details not found or no changes is made"
-                logger.error(error_message)
-                logger.error(traceback.format_exc())
-                raise HTTPException(status_code=404, detail=error_message)
+        if result.modified_count == 0:
+            error_message = "User details not found or no changes is made"
+            logger.error(error_message)
+            logger.error(traceback.format_exc())
+            raise HTTPException(status_code=404, detail=error_message)
 
-            return {
-                "status": "success", 
-                "message": f"User detail {request.user_detail_field} is updated successfully"
-                }, 200
+        return {
+            "status": "success", 
+            "message": f"User detail {request.user_detail_field} is updated successfully"
+            }, 200
 
     except HTTPException as he:
         raise he
@@ -285,8 +285,6 @@ def _validate_update_user_details(user_detail_field: str, value: Union[int, str,
         logger.error(error_message)
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=400, detail=error_message)
-    
-    return True
 
 def _validate_user_details(user_id: str):
     """
