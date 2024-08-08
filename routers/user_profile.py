@@ -27,13 +27,12 @@ class UserStats(BaseModel):
     constraint: List[str]
 
 class Request(BaseModel):
-    username: str
     age: int
     gender: str
     stats: UserStats
 
 @router.post("/upload_user_details")
-async def uploadUserDetails(request: Request, _: dict = Depends(user_or_admin_required)):
+async def uploadUserDetails(request: Request, current_user: dict = Depends(user_or_admin_required)):
     """
     Upload user's information, equipment, goal and available dates.
     """
@@ -41,13 +40,13 @@ async def uploadUserDetails(request: Request, _: dict = Depends(user_or_admin_re
     try:
         # write user information into db
         user_details = request.model_dump()
-        user_id = await get_user_id_internal(user_details["username"])
+        user_id = await get_user_id_internal(current_user["email"])
         user_details["user_id"] = user_id
 
         if _validate_user_details(user_id):
             return {
                 "status": "error", 
-                "message": "The user details already exist for username: " + user_details["username"]
+                "message": "The user details already exist for user_id: " + user_id
             }, 400
 
         user_dboperations = DbOperations("user-details")
@@ -154,9 +153,11 @@ def _validate_user_details(user_id: str):
     try:
         query = {"user_id": user_id}
         user_details = user_details_dboperations.read_one_from_mongodb(query)
+        # print(user_details)
     except Exception as e:
         error_message = f"Error reading from user-details collection for user: {user_id} with the error: {e}"
         print(error_message)
         return {"status": "error", "message": error_message}, 500
     
+    print(user_details is not None)
     return user_details is not None
