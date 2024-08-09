@@ -3,8 +3,11 @@ from pydantic import BaseModel
 from typing import TypedDict, List, Dict, Any, Optional
 from .openai_chat_base import OpenAIBase
 from fastapi.responses import StreamingResponse
-from fastapi.responses import StreamingResponse
 from .base_assistant import BaseAssistant
+import json
+from datetime import datetime
+from routers.generate_plan import get_weekly_training_plan_internal
+from routers.user_profile import get_user_id_internal
 
 
 class QuestionModel(BaseModel):
@@ -22,21 +25,25 @@ class ResponseModel(BaseModel):
 
 
 class WorkoutJournalPurposeData(TypedDict):
-    workout_date: str
-    exercise_data: List[Dict[str, Any]]
+    workout_date: datetime
+    user_email: str
 
 
 prompt_map = {
-    "onboarding_assessment": "services/prompts/onboarding_assessment.txt",
-    "summarize_onboarding_assessment": "services/prompts/summarize_onboarding_assessment.txt",
+    "workout_journal_checkin": "services/prompts/workout_journal_checkin.txt",
 }
 
 
-class WorkoutJournalAssistant:
+class WorkoutJournalAssistant(BaseAssistant):
     def __init__(self, client: OpenAI):
         self.client = OpenAIBase(client)
 
-    def chat(self, chat_history: list[dict], user_message: str) -> StreamingResponse:
+    async def chat(
+        self,
+        chat_history: list[dict],
+        user_message: str,
+        purpose_data: WorkoutJournalPurposeData,
+    ) -> StreamingResponse:
         """
         Process a chat message for workout journaling.
 
@@ -45,23 +52,32 @@ class WorkoutJournalAssistant:
             user_message (str): The current user message.
             purpose_data (WorkoutJournalPurposeData): Additional data for workout journaling.
                 workout_date (datetime): The date of the workout.
-                exercise_data (List[Dict[str, Any]]): List of exercises performed.
+                user_email (str): The email of the user.
 
         Returns:
             StreamingResponse: The AI's response as a stream.
         """
-        with open(prompt_map["onboarding_assessment"], "r") as file:
+        with open(prompt_map["workout_journal_checkin"], "r") as file:
             system_message = file.read()
+
+        workout_journal_data = await self._retrieve_workout_journal_data(
+            purpose_data["workout_date"], purpose_data["user_email"]
+        )
+        system_message = system_message.replace(
+            "{%weekly_workout_plan%}",
+            json.dumps(workout_journal_data),
+        )
+        system_message = system_message.replace(
+            "{%current_date%}", purpose_data["workout_date"].strftime("%Y-%m-%d")
+        )
+        print(system_message)
         response_data = self.client.chat_json_output_stream(
             chat_history, system_message, user_message, ResponseModel
         )
         return response_data
 
-    def summarize(self, chat_history: list[dict]) -> str:
-        with open(prompt_map["summarize_onboarding_assessment"], "r") as file:
-            system_message = file.read()
-        return self.client.chat_str_output(
-            chat_history,
-            system_message,
-            "Summarize the content as instructed.",
-        )
+    async def _retrieve_workout_journal_data(
+        self, workout_date: datetime, user_email: str
+    ) -> dict:
+        user_id = await get_user_id_internal(user_email)
+        return await get_weekly_training_plan_internal(workout_date, user_id)

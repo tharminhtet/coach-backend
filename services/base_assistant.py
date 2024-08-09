@@ -4,8 +4,9 @@ from fastapi.responses import StreamingResponse
 
 
 class BaseAssistant(ABC):
+
     @abstractmethod
-    def chat(
+    async def chat(
         self,
         chat_history: List[Dict[str, str]],
         user_message: str,
