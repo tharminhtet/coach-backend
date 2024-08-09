@@ -1,8 +1,10 @@
 from openai import OpenAI
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, TypedDict, Dict, Any
 from .openai_chat_base import OpenAIBase
 from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse
+from .base_assistant import BaseAssistant
 
 
 class QuestionModel(BaseModel):
@@ -25,11 +27,32 @@ prompt_map = {
 }
 
 
-class OnboardingAssistant:
+class OnboardingPurposeData(TypedDict):
+    user_profile: Dict[str, Any]
+
+
+class OnboardingAssistant(BaseAssistant):
     def __init__(self, client: OpenAI):
         self.client = OpenAIBase(client)
 
-    def chat(self, chat_history: list[dict], user_message: str) -> StreamingResponse:
+    def chat(
+        self,
+        chat_history: list[dict],
+        user_message: str,
+        purpose_data: OnboardingPurposeData,
+    ) -> StreamingResponse:
+        """
+        Process a chat message for onboarding purposes.
+
+        Args:
+            chat_history (List[Dict[str, str]]): The chat history.
+            user_message (str): The current user message.
+            purpose_data (OnboardingPurposeData): Additional data for onboarding.
+                user_profile (Dict[str, Any]): The user's profile information.
+
+        Returns:
+            StreamingResponse: The AI's response as a stream.
+        """
         with open(prompt_map["onboarding_assessment"], "r") as file:
             system_message = file.read()
         response_data = self.client.chat_json_output_stream(
