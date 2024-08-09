@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Any, Union
 from db.db_operations import DbOperations
+from authorization import user_or_admin_required
 from datetime import datetime
 import uuid
 from services.onboarding_assistant import OnboardingAssistant, OnboardingPurposeData
@@ -71,7 +72,9 @@ class ChatResponse(BaseModel):
 
 
 @router.post("/chat", response_class=StreamingResponse)
-async def chat(request: ChatRequest):
+async def chat(
+    request: ChatRequest, current_user: dict = Depends(user_or_admin_required)
+):
     """
     Process a chat message and return a response.
     """
@@ -91,12 +94,14 @@ async def chat(request: ChatRequest):
             assistant = WorkoutJournalAssistant(client)
             purpose_data: WorkoutJournalPurposeData = {
                 "workout_date": request.purpose_data.workout_date,
-                "exercise_data": request.purpose_data.exercise_data,
+                "user_email": current_user["email"],
             }
         else:
             raise HTTPException(status_code=400, detail="Invalid chat purpose")
 
-        ai_response_stream = assistant.chat(chat_history, request.message, purpose_data)
+        ai_response_stream = await assistant.chat(
+            chat_history, request.message, purpose_data
+        )
 
         def generate():
             full_response = None
