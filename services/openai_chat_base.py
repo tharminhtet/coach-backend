@@ -2,15 +2,14 @@ from openai import OpenAI
 import json
 import instructor
 from pydantic import BaseModel
-from rich.console import Console
-from typing import Type, Optional
+from typing import Type
 
 
 class OpenAIBase:
     def __init__(self, client: OpenAI):
         self.client = client
         self.instructor_client = instructor.from_openai(client)
-        self.model = "gpt-4o"
+        self.model = "gpt-4o-mini"
 
     def chat_json_output_stream(
         self,

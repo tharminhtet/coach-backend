@@ -1,15 +1,17 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Dict, Optional
 from db.db_operations import DbOperations
 from datetime import datetime
 import uuid
 from services.onboarding_assistant import OnboardingAssistant
+from services.workout_journal_assistant import WorkoutJournalAssistant
 from openai import OpenAI
 import logging
 import traceback
 import json
+from enum import Enum
 
 router = APIRouter()
 logging.basicConfig(level=logging.ERROR)
@@ -22,9 +24,21 @@ class ChatMessage(BaseModel):
     timestamp: datetime
 
 
+class ChatPurpose(Enum):
+    WORKOUT_GUIDE = "workout_guide"
+    WORKOUT_JOURNAL = "workout_journal"
+    ONBOARDING = "onboarding"
+    GENERAL = "general"
+
+
 class ChatRequest(BaseModel):
-    message: str
-    chat_id: Optional[str] = None
+    message: str = Field(..., description="The message content sent by the user")
+    purpose: ChatPurpose = Field(
+        ..., description="The purpose or context of the chat message"
+    )
+    chat_id: Optional[str] = Field(
+        None, description="Unique identifier for the chat session, if one exists"
+    )
 
 
 class ChatResponse(BaseModel):
@@ -46,8 +60,14 @@ async def chat(request: ChatRequest):
         user_message = {"role": "user", "content": request.message}
 
         client = OpenAI()
-        assistant = OnboardingAssistant(client)
-        ai_response_stream = assistant.chat(chat_history, request.message)
+        if request.purpose == ChatPurpose.ONBOARDING:
+            assistant = OnboardingAssistant(client)
+            ai_response_stream = assistant.chat(chat_history, request.message)
+        elif request.purpose == ChatPurpose.WORKOUT_JOURNAL:
+            assistant = WorkoutJournalAssistant(client)
+            ai_response_stream = assistant.chat(chat_history, request.message)
+        else:
+            raise HTTPException(status_code=400, detail="Invalid chat purpose")
 
         def generate():
             full_response = None
@@ -108,6 +128,7 @@ def _save_chat_messages(chat_id: str, messages: List[Dict[str, str]]):
 def _get_chat_history(chat_id: str) -> list[dict[str, str]]:
     """
     Retrieve chat history from the database.
+    Return empty list if chat_id is not found.
     """
     db_operations = DbOperations("chat-history")
     chat_document = db_operations.collection.find_one({"chat_id": chat_id})

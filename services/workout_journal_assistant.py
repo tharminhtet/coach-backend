@@ -25,7 +25,7 @@ prompt_map = {
 }
 
 
-class OnboardingAssistant:
+class WorkoutJournalAssistant:
     def __init__(self, client: OpenAI):
         self.client = OpenAIBase(client)
 
