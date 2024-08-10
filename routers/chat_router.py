@@ -84,7 +84,6 @@ async def chat(request: ChatRequest):
         client = OpenAI()
         if request.purpose == ChatPurpose.ONBOARDING:
             assistant = OnboardingAssistant(client)
-            assistant = OnboardingAssistant(client)
             purpose_data: OnboardingPurposeData = {
                 "user_name": request.purpose_data.user_name
             }
