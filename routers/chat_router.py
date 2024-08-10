@@ -53,9 +53,6 @@ class WorkoutJournalChatRequest(BaseModel):
     workout_date: datetime = Field(
         ..., description="Date of the workout being journaled"
     )
-    exercise_data: List[Dict[str, Any]] = Field(
-        ..., description="List of exercises performed"
-    )
 
 
 class ChatRequest(BaseChatRequest):
