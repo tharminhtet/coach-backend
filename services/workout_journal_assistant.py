@@ -1,6 +1,6 @@
 from openai import OpenAI
 from pydantic import BaseModel
-from typing import Optional, TypedDict, Dict, Any
+from typing import TypedDict, List, Dict, Any, Optional
 from .openai_chat_base import OpenAIBase
 from fastapi.responses import StreamingResponse
 from fastapi.responses import StreamingResponse
@@ -21,34 +21,31 @@ class ResponseModel(BaseModel):
     complete: bool = None
 
 
+class WorkoutJournalPurposeData(TypedDict):
+    workout_date: str
+    exercise_data: List[Dict[str, Any]]
+
+
 prompt_map = {
     "onboarding_assessment": "services/prompts/onboarding_assessment.txt",
     "summarize_onboarding_assessment": "services/prompts/summarize_onboarding_assessment.txt",
 }
 
 
-class OnboardingPurposeData(TypedDict):
-    user_profile: Dict[str, Any]
-
-
-class OnboardingAssistant(BaseAssistant):
+class WorkoutJournalAssistant:
     def __init__(self, client: OpenAI):
         self.client = OpenAIBase(client)
 
-    def chat(
-        self,
-        chat_history: list[dict],
-        user_message: str,
-        purpose_data: OnboardingPurposeData,
-    ) -> StreamingResponse:
+    def chat(self, chat_history: list[dict], user_message: str) -> StreamingResponse:
         """
-        Process a chat message for onboarding purposes.
+        Process a chat message for workout journaling.
 
         Args:
             chat_history (List[Dict[str, str]]): The chat history.
             user_message (str): The current user message.
-            purpose_data (OnboardingPurposeData): Additional data for onboarding.
-                user_profile (Dict[str, Any]): The user's profile information.
+            purpose_data (WorkoutJournalPurposeData): Additional data for workout journaling.
+                workout_date (datetime): The date of the workout.
+                exercise_data (List[Dict[str, Any]]): List of exercises performed.
 
         Returns:
             StreamingResponse: The AI's response as a stream.

@@ -1,15 +1,20 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
-from typing import List, Dict, Optional
+from pydantic import BaseModel, Field
+from typing import List, Dict, Optional, Any, Union
 from db.db_operations import DbOperations
 from datetime import datetime
 import uuid
-from services.onboarding_assistant import OnboardingAssistant
+from services.onboarding_assistant import OnboardingAssistant, OnboardingPurposeData
+from services.workout_journal_assistant import (
+    WorkoutJournalAssistant,
+    WorkoutJournalPurposeData,
+)
 from openai import OpenAI
 import logging
 import traceback
 import json
+from enum import Enum
 
 router = APIRouter()
 logging.basicConfig(level=logging.ERROR)
@@ -22,9 +27,40 @@ class ChatMessage(BaseModel):
     timestamp: datetime
 
 
-class ChatRequest(BaseModel):
-    message: str
-    chat_id: Optional[str] = None
+class ChatPurpose(Enum):
+    WORKOUT_GUIDE = "workout_guide"
+    WORKOUT_JOURNAL = "workout_journal"
+    ONBOARDING = "onboarding"
+    GENERAL = "general"
+
+
+class BaseChatRequest(BaseModel):
+    message: str = Field(..., description="The message content sent by the user")
+    purpose: ChatPurpose = Field(
+        ..., description="The purpose or context of the chat message"
+    )
+    chat_id: Optional[str] = Field(
+        None, description="Unique identifier for the chat session, if one exists"
+    )
+
+
+class OnboardingChatRequest(BaseModel):
+    user_name: str = Field(..., description="User name for onboarding")
+
+
+class WorkoutJournalChatRequest(BaseModel):
+    workout_date: datetime = Field(
+        ..., description="Date of the workout being journaled"
+    )
+    exercise_data: List[Dict[str, Any]] = Field(
+        ..., description="List of exercises performed"
+    )
+
+
+class ChatRequest(BaseChatRequest):
+    purpose_data: Optional[Union[OnboardingChatRequest, WorkoutJournalChatRequest]] = (
+        Field(None, description="Purpose-specific data")
+    )
 
 
 class ChatResponse(BaseModel):
@@ -46,8 +82,21 @@ async def chat(request: ChatRequest):
         user_message = {"role": "user", "content": request.message}
 
         client = OpenAI()
-        assistant = OnboardingAssistant(client)
-        ai_response_stream = assistant.chat(chat_history, request.message)
+        if request.purpose == ChatPurpose.ONBOARDING:
+            assistant = OnboardingAssistant(client)
+            purpose_data: OnboardingPurposeData = {
+                "user_name": request.purpose_data.user_name
+            }
+        elif request.purpose == ChatPurpose.WORKOUT_JOURNAL:
+            assistant = WorkoutJournalAssistant(client)
+            purpose_data: WorkoutJournalPurposeData = {
+                "workout_date": request.purpose_data.workout_date,
+                "exercise_data": request.purpose_data.exercise_data,
+            }
+        else:
+            raise HTTPException(status_code=400, detail="Invalid chat purpose")
+
+        ai_response_stream = assistant.chat(chat_history, request.message, purpose_data)
 
         def generate():
             full_response = None
@@ -108,6 +157,7 @@ def _save_chat_messages(chat_id: str, messages: List[Dict[str, str]]):
 def _get_chat_history(chat_id: str) -> list[dict[str, str]]:
     """
     Retrieve chat history from the database.
+    Return empty list if chat_id is not found.
     """
     db_operations = DbOperations("chat-history")
     chat_document = db_operations.collection.find_one({"chat_id": chat_id})
