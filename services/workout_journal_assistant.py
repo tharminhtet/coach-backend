@@ -86,11 +86,8 @@ class WorkoutJournalAssistant(BaseAssistant):
         with open(prompt_map["workout_journal_checkin_summarize"], "r") as file:
             system_message = file.read()
 
-        # Convert date string to datetime object
-        date_obj = datetime.strptime(date, "%Y-%m-%d")
-
         workout_journal_data = await self._retrieve_workout_journal_data(
-            date_obj, user_email
+            datetime.strptime(date, "%Y-%m-%d"), user_email
         )
         system_message = system_message.replace(
             "{%workout_journal_data%}",

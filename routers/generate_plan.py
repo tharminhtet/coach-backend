@@ -14,19 +14,7 @@ import traceback
 from routers.user_profile import get_user_id_internal
 from services.onboarding_assistant import OnboardingAssistant
 from services.workout_journal_assistant import WorkoutJournalAssistant
-from .helpers.generate_plan_helpers import (
-    _validate_generate_weekly_plan,
-    _extract_user_data,
-    _get_all_old_weekly_training_plans,
-    _save_new_weekly_training_plan,
-    _update_overall_training_plan,
-    _get_chat_history,
-    _get_daily_training_plan,
-    _get_weekly_training_plan,
-    _get_training_plan,
-    _get_weekly_training_plan_internal,
-    update_weekly_summary,
-)
+from .helpers import generate_plan_helpers as gph
 
 # Load .env file
 load_dotenv()
@@ -54,7 +42,7 @@ async def generateWeeklyPlan(
     ).strftime("%Y-%m-%d")
     year = str(datetime.now().year)
     # validate if weekly training plan is not already generated for the same week
-    if not _validate_generate_weekly_plan(user_id, start_of_week, year):
+    if not gph._validate_generate_weekly_plan(user_id, start_of_week, year):
         error_message = f"The plan is already generated for the week: {start_of_week}"
         logger.error(error_message)
         logger.error(traceback.format_exc())
@@ -64,12 +52,12 @@ async def generateWeeklyPlan(
         }, 400
 
     # retrieve user details from chat or db
-    user_data = _extract_user_data(user_id=user_id, chat_id=chat_id)
+    user_data = gph._extract_user_data(user_id=user_id, chat_id=chat_id)
     # update the last week summary if exists
-    update_weekly_summary(user_id=user_id)
+    gph.update_weekly_summary(user_id=user_id)
 
     # retrieve all previous weeks of user fitness plans
-    old_weekly_training_plans = _get_all_old_weekly_training_plans(
+    old_weekly_training_plans = gph._get_all_old_weekly_training_plans(
         user_id=user_id, year=year
     )
     week_number = (
@@ -105,11 +93,11 @@ async def generateWeeklyPlan(
     response = response.choices[0].message.content
     logger.info("Plan is successfully generated.")
     # save the new weekly training plan in weekly-training-plans collection
-    week_id = _save_new_weekly_training_plan(
+    week_id = gph._save_new_weekly_training_plan(
         user_id=user_id, fitness_plan=json.loads(response), start_of_week=start_of_week
     )
     # update the user overall training plan with the new week training plan in training-plans collection.
-    _update_overall_training_plan(
+    gph._update_overall_training_plan(
         user_id=user_id,
         week_id=week_id,
         week_number=week_number,
@@ -129,7 +117,7 @@ async def get_weekly_training_plan_api(
     """
     target_date = datetime.strptime(date, "%Y-%m-%d")
     user_id = await get_user_id_internal(current_user["email"])
-    return await _get_weekly_training_plan_internal(target_date, user_id)
+    return await gph._get_weekly_training_plan_internal(target_date, user_id)
 
 
 @router.put("/updateExerciseStatus/{week_id}")
@@ -137,7 +125,7 @@ async def updateExerciseStatus(week_id: str, request: UpdateStatusRequest):
     """
     Update exercise statuses of given date based on week_id.
     """
-    weekly_plan = _get_weekly_training_plan(week_id)
+    weekly_plan = gph._get_weekly_training_plan(week_id)
     # update all exercise statuses of requested date
     update_operations = {}
     for workout in weekly_plan["workouts"]:
@@ -161,7 +149,7 @@ async def updateExerciseStatus(week_id: str, request: UpdateStatusRequest):
     logger.info("Successfully updated all the statuses for: " + request.date)
 
     # update workout summary of given date.
-    daily_plan = _get_daily_training_plan(week_id, request.date)
+    daily_plan = gph._get_daily_training_plan(week_id, request.date)
     client = OpenAI()
     with open("prompts/daily_plan_summary.txt", "r") as file:
         system_message = file.read()
@@ -193,8 +181,8 @@ async def updateExerciseStatus(week_id: str, request: UpdateStatusRequest):
     }, 200
 
 
-@router.get("/completeDailySummary")
-async def complete_daily_summary(
+@router.get("/updateDailySummary")
+async def update_daily_summary(
     date: str, chat_id: str, current_user: dict = Depends(user_or_admin_required)
 ):
     """
@@ -202,7 +190,7 @@ async def complete_daily_summary(
     Based on weekly_training_plan and chat_history between user and assistant.
     Summarize the workout and update the "summary" field in the weekly_training_plan document of the given date.
     """
-    chat_history = _get_chat_history(chat_id)
+    chat_history = gph._get_chat_history(chat_id)
     client = OpenAI()
     assistant = WorkoutJournalAssistant(client)
     checkin_summary = await assistant.summarize(
@@ -212,7 +200,7 @@ async def complete_daily_summary(
     # Update the summary in the database
     user_id = await get_user_id_internal(current_user["email"])
     target_date = datetime.strptime(date, "%Y-%m-%d")
-    weekly_plan = await _get_weekly_training_plan_internal(target_date, user_id)
+    weekly_plan = await gph._get_weekly_training_plan_internal(target_date, user_id)
 
     weekly_plan_dboperations = DbOperations("weekly-training-plans")
     update_query = {"$set": {"workouts.$.summary": checkin_summary}}
