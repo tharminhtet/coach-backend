@@ -21,6 +21,7 @@ router = APIRouter()
 logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)
 
+
 class UpdateStatusRequest(BaseModel):
     date: str
     status: List[str]
@@ -106,15 +107,21 @@ async def generateWeeklyPlan(
 
 
 @router.get("/getWeeklyTrainingPlan")
-async def get_weekly_training_plan(
+async def get_weekly_training_plan_api(
     date: str, current_user: dict = Depends(user_or_admin_required)
 ):
     """
-    Get weekly training plan of given user.
+    API endpoint to get weekly training plan of given user.
     """
-    # Convert the input date string to a datetime object
     target_date = datetime.strptime(date, "%Y-%m-%d")
     user_id = await get_user_id_internal(current_user["email"])
+    return await get_weekly_training_plan_internal(target_date, user_id)
+
+
+async def get_weekly_training_plan_internal(target_date: datetime, user_id: str):
+    """
+    Internal function to get weekly training plan for a given date and user_id.
+    """
     # Retrieve the training plan for the user
     training_plan = _get_training_plan(user_id)
 
@@ -124,9 +131,7 @@ async def get_weekly_training_plan(
         error_message = "No training plan found for the specified year"
         logger.error(error_message)
         logger.error(traceback.format_exc())
-        raise HTTPException(
-            status_code=404, detail=error_message
-        )
+        raise HTTPException(status_code=404, detail=error_message)
 
     week_id = None
     for _, week_data in training_plan["training_plan"][year].items():
@@ -139,9 +144,7 @@ async def get_weekly_training_plan(
         error_message = "No matching week found for the given date"
         logger.error(error_message)
         logger.error(traceback.format_exc())
-        raise HTTPException(
-            status_code=404, detail=error_message
-        )
+        raise HTTPException(status_code=404, detail=error_message)
 
     # Retrieve the weekly training plan
     weekly_plan = _get_weekly_training_plan(week_id)
@@ -172,9 +175,7 @@ async def updateExerciseStatus(week_id: str, request: UpdateStatusRequest):
             error_message = f"Error updating status of week_id: {week_id} with date: {request.date} with error: {str(e)}"
             logger.error(error_message)
             logger.error(traceback.format_exc())
-            raise HTTPException(
-                status_code=500, detail=error_message
-            )
+            raise HTTPException(status_code=500, detail=error_message)
 
     logger.info("Successfully updated all the statuses for: " + request.date)
 
@@ -183,9 +184,7 @@ async def updateExerciseStatus(week_id: str, request: UpdateStatusRequest):
     client = OpenAI()
     with open("prompts/daily_plan_summary.txt", "r") as file:
         system_message = file.read()
-        system_message = system_message.replace(
-            "daily_plan", json.dumps(daily_plan)
-        )
+        system_message = system_message.replace("daily_plan", json.dumps(daily_plan))
     user_message = "Create the short summary of the given day training plan."
     response = client.chat.completions.create(
         model="gpt-4o",
@@ -205,14 +204,13 @@ async def updateExerciseStatus(week_id: str, request: UpdateStatusRequest):
         error_message = f"Error updating daily summary of week_id: {week_id} for date: {request.date} with error: {str(e)}"
         logger.error(error_message)
         logger.error(traceback.format_exc())
-        raise HTTPException(
-            status_code=500, detail=error_message
-        )
+        raise HTTPException(status_code=500, detail=error_message)
 
     return {
         "status": "success",
         "message": "Exercise statuses and summary are updated successfully",
     }, 200
+
 
 def update_weekly_summary(user_id: str):
     """
@@ -297,9 +295,7 @@ def _extract_user_data(
                 error_message = "User data not found for user_id: " + user_id
                 logger.error(error_message)
                 logger.error(traceback.format_exc())
-                raise HTTPException(
-                    status_code=404, detail=error_message
-                )
+                raise HTTPException(status_code=404, detail=error_message)
             logger.info("Successfully retrieved user data.")
         except HTTPException as he:
             raise he
@@ -372,7 +368,9 @@ def _save_new_weekly_training_plan(
         logger.error(error_message)
         logger.error(traceback.format_exc())
         return {"status": "error", "message": error_message}, 500
-    logger.info("Weekly training plan is successfully saved in weekly training plan db.")
+    logger.info(
+        "Weekly training plan is successfully saved in weekly training plan db."
+    )
     return week_id
 
 
@@ -399,7 +397,9 @@ def _update_overall_training_plan(
         logger.error(error_message)
         logger.error(traceback.format_exc())
         return {"status": "error", "message": error_message}, 500
-    logger.info("Weekly training plan is successfully updated from user training plans.")
+    logger.info(
+        "Weekly training plan is successfully updated from user training plans."
+    )
 
 
 def _get_chat_history(chat_id: str) -> list[dict[str, str]]:
@@ -415,40 +415,41 @@ def _get_chat_history(chat_id: str) -> list[dict[str, str]]:
         ]
     return []
 
+
 def _get_daily_training_plan(week_id: str, date: str):
     """
     Get daily training_plan based on week_id and given date.
     """
     weekly_plan_dboperations = DbOperations("weekly-training-plans")
-    date_query = {
-    "week_id": week_id,
-    "workouts.date": date
-    }
+    date_query = {"week_id": week_id, "workouts.date": date}
     projection = {
         "workouts.$": 1  # to return only the matching element in the workouts array
     }
     daily_plan = None
     try:
-        result = weekly_plan_dboperations.read_one_from_mongodb_with_projection(date_query, projection)
+        result = weekly_plan_dboperations.read_one_from_mongodb_with_projection(
+            date_query, projection
+        )
         if not result:
             error_message = f"No workout found for date: {date}"
             logger.error(error_message)
             logger.error(traceback.format_exc())
-            raise HTTPException(
-                status_code=404, detail=error_message
-            )
-        daily_plan = result['workouts'][0]
+            raise HTTPException(status_code=404, detail=error_message)
+        daily_plan = result["workouts"][0]
     except HTTPException as he:
         raise he
     except Exception as e:
-        error_message = f"Error reading weekly training plan for date: {date} with error: {str(e)}"
+        error_message = (
+            f"Error reading weekly training plan for date: {date} with error: {str(e)}"
+        )
         logger.error(error_message)
         logger.error(traceback.format_exc())
-        raise HTTPException(
-            status_code=500, detail=error_message
-        )
-    logger.info(f"Successfully retrieved training_plan for week_id: {week_id} with date: {date}")
+        raise HTTPException(status_code=500, detail=error_message)
+    logger.info(
+        f"Successfully retrieved training_plan for week_id: {week_id} with date: {date}"
+    )
     return daily_plan
+
 
 def _get_weekly_training_plan(week_id: str):
     """
@@ -463,18 +464,14 @@ def _get_weekly_training_plan(week_id: str):
             error_message = "Weekly training plan not found"
             logger.error(error_message)
             logger.error(traceback.format_exc())
-            raise HTTPException(
-                status_code=404, detail=error_message
-            )
+            raise HTTPException(status_code=404, detail=error_message)
     except HTTPException as he:
         raise he
     except Exception as e:
         error_message = f"Error retrieving weekly training plan: {str(e)}"
         logger.error(error_message)
         logger.error(traceback.format_exc())
-        raise HTTPException(
-            status_code=500, detail=error_message
-        )
+        raise HTTPException(status_code=500, detail=error_message)
 
     # Remove the _id field from the response
     if weekly_plan["_id"]:
@@ -482,6 +479,7 @@ def _get_weekly_training_plan(week_id: str):
 
     logger.info(f"Successfully retrieved weekly training plan for week_id: {week_id}")
     return weekly_plan
+
 
 def _get_training_plan(user_id: str):
     """
@@ -496,17 +494,15 @@ def _get_training_plan(user_id: str):
             error_message = f"Training plan not found for the user: {user_id} as it may have never been created with user-details."
             logger.error(error_message)
             logger.error(traceback.format_exc())
-            raise HTTPException(
-                status_code=404, detail=error_message
-            )
+            raise HTTPException(status_code=404, detail=error_message)
     except HTTPException as he:
         raise he
     except Exception as e:
-        error_message = f"Error retrieving training plan for user: {user_id} with error: {str(e)}"
+        error_message = (
+            f"Error retrieving training plan for user: {user_id} with error: {str(e)}"
+        )
         logger.error(error_message)
         logger.error(traceback.format_exc())
-        raise HTTPException(
-            status_code=500, detail=error_message
-        )
+        raise HTTPException(status_code=500, detail=error_message)
     logger.info(f"Successfully retrieved training_plan for user_id: {user_id}")
     return training_plans

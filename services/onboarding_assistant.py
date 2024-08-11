@@ -35,7 +35,7 @@ class OnboardingAssistant(BaseAssistant):
     def __init__(self, client: OpenAI):
         self.client = OpenAIBase(client)
 
-    def chat(
+    async def chat(
         self,
         chat_history: list[dict],
         user_message: str,
