@@ -1,6 +1,6 @@
 from openai import OpenAI
 from pydantic import BaseModel
-from typing import TypedDict, List, Dict, Any, Optional
+from typing import TypedDict, Optional
 from .openai_chat_base import OpenAIBase
 from fastapi.responses import StreamingResponse
 from .base_assistant import BaseAssistant
