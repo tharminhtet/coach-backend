@@ -11,6 +11,10 @@ from services.workout_journal_assistant import (
     WorkoutJournalAssistant,
     WorkoutJournalPurposeData,
 )
+from services.workout_guide_assistant import (
+    WorkoutGuideAssistant,
+    WorkoutGuidePurposeData,
+)
 from openai import OpenAI
 import logging
 import traceback
@@ -55,10 +59,16 @@ class WorkoutJournalChatRequest(BaseModel):
     )
 
 
-class ChatRequest(BaseChatRequest):
-    purpose_data: Optional[Union[OnboardingChatRequest, WorkoutJournalChatRequest]] = (
-        Field(None, description="Purpose-specific data")
+class WorkoutGuideChatRequest(BaseModel):
+    workout_date: datetime = Field(
+        ..., description="Date of the workout guide being asked."
     )
+
+
+class ChatRequest(BaseChatRequest):
+    purpose_data: Optional[
+        Union[OnboardingChatRequest, WorkoutJournalChatRequest, WorkoutGuideChatRequest]
+    ] = Field(None, description="Purpose-specific data")
 
 
 class ChatResponse(BaseModel):
@@ -90,6 +100,12 @@ async def chat(
         elif request.purpose == ChatPurpose.WORKOUT_JOURNAL:
             assistant = WorkoutJournalAssistant(client)
             purpose_data: WorkoutJournalPurposeData = {
+                "workout_date": request.purpose_data.workout_date,
+                "user_email": current_user["email"],
+            }
+        elif request.purpose == ChatPurpose.WORKOUT_GUIDE:
+            assistant = WorkoutGuideAssistant(client)
+            purpose_data: WorkoutGuidePurposeData = {
                 "workout_date": request.purpose_data.workout_date,
                 "user_email": current_user["email"],
             }
