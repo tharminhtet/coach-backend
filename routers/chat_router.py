@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Any, Union
@@ -31,6 +31,12 @@ logger = logging.getLogger(__name__)
 class ChatHistoryByYearMonthRequest(BaseModel):
     year: int
     month: Optional[int] = None
+    offset: int = Field(0, ge=0)
+    limit: int = Field(10, ge=1, le=100)
+
+class ChatHistoryByDateRangeRequest(BaseModel):
+    start_date: str
+    end_date: str
     offset: int = Field(0, ge=0)
     limit: int = Field(10, ge=1, le=100)
 
@@ -169,7 +175,10 @@ async def get_chat_history(chat_id: str):
 
 
 @router.get("/getTodayChatHistory", response_model=List[str])
-async def get_today_chat_history(current_user: dict = Depends(user_or_admin_required)):
+async def get_today_chat_history(
+    offset: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=100), 
+    current_user: dict = Depends(user_or_admin_required)):
     """
     Returns a list of chat ids for given user from today, sorted by time (most recent first)
     """
@@ -178,12 +187,11 @@ async def get_today_chat_history(current_user: dict = Depends(user_or_admin_requ
     today_start = datetime.combine(today, time.min)
     today_end = datetime.combine(today, time.max)
 
-    return _get_chat_ids_from_date_range(user_id, today_start, today_end)
+    return _get_chat_ids_from_date_range_with_pagination(user_id, today_start, today_end, offset, limit)
 
-@router.get("/getChatHistoryByRange")
+@router.get("/getChatHistoryByDateRange")
 async def get_chat_history_by_date_range(
-    start_date: str,
-    end_date: str,
+    request: ChatHistoryByDateRangeRequest,
     current_user: dict = Depends(user_or_admin_required)
 ):
     """
@@ -193,8 +201,8 @@ async def get_chat_history_by_date_range(
     user_id = await get_user_id_internal(current_user["email"])
 
     try:
-        start_datetime = datetime.fromisoformat(start_date)
-        end_datetime = datetime.fromisoformat(end_date)
+        start_datetime = datetime.fromisoformat(request.start_date)
+        end_datetime = datetime.fromisoformat(request.end_date)
     except ValueError:
         error_message = "Invalid date format. Use ISO format (YYYY-MM-DD)."
         logger.error(error_message)
@@ -203,7 +211,7 @@ async def get_chat_history_by_date_range(
 
     start_datetime = datetime.combine(start_datetime.date(), time.min)
     end_datetime = datetime.combine(end_datetime.date(), time.max)
-    return _get_chat_ids_from_date_range(user_id, start_datetime, end_datetime)
+    return _get_chat_ids_from_date_range_with_pagination(user_id, start_datetime, end_datetime, request.offset, request.limit)
 
 
 @router.get("/getChatHistoryByYearMonth")
@@ -221,7 +229,10 @@ async def get_chat_history_by_year_month(
     try:
         if request.month:
             start_date = datetime(request.year, request.month, 1)
-            end_date = start_date + relativedelta(months=1) - timedelta(seconds=1)
+            if request.month == 12:
+                end_date = datetime(request.year + 1, 1, 1) - timedelta(seconds=1)
+            else:
+                end_date = datetime(request.year, request.month + 1, 1) - timedelta(seconds=1)
         else:
             start_date = datetime(request.year, 1, 1)
             end_date = datetime(request.year, 12, 31, 23, 59, 59)
@@ -285,28 +296,6 @@ def _save_chat_messages(user_id: str, chat_id: str, messages: List[Dict[str, str
         },
         upsert=True
     )
-
-def _get_chat_ids_from_date_range(user_id: str, start_time: datetime, end_time: datetime) -> List[str]:
-    """
-    Retrieve a list of chat_ids based on start date and end date from chat-history collection.
-    """
-    db_operations = DbOperations("chat-history")
-    try: 
-        chats = db_operations.collection.find(
-            {
-                "user_id": user_id,
-                "time": {"$gte": start_time.isoformat(), "$lte": end_time.isoformat()}
-            },
-            {"chat_id": 1, "time": 1}
-        ).sort("time", -1) 
-        chat_ids = [chat["chat_id"] for chat in chats]
-        return chat_ids
-    except Exception as e:
-        error_message = f"Error retrieving chat history for user_id: {user_id} with error: {str(e)}"
-        logger.error(error_message)
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=error_message)
-
 
 def _get_chat_history(chat_id: str) -> list[dict[str, str]]:
     """
