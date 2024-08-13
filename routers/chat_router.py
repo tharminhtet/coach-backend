@@ -197,7 +197,7 @@ async def get_chat_history_by_date_range(
     # Ensure the end date is at the end of the day
     end_datetime = datetime.combine(end_datetime.date(), time.max)
     return _get_chat_ids_from_date_range(user_id, start_datetime, end_datetime)
-    
+
 
 def _save_chat_messages(user_id: str, chat_id: str, messages: List[Dict[str, str]]):
     """
@@ -221,7 +221,6 @@ def _get_chat_ids_from_date_range(user_id: str, start_time: datetime, end_time: 
     Retrieve a list of chat_ids based on start date and end date from chat-history collection.
     """
     db_operations = DbOperations("chat-history")
-    chats = []
     try: 
         chats = db_operations.collection.find(
             {
@@ -230,14 +229,13 @@ def _get_chat_ids_from_date_range(user_id: str, start_time: datetime, end_time: 
             },
             {"chat_id": 1, "time": 1}
         ).sort("time", -1) 
+        chat_ids = [chat["chat_id"] for chat in chats]
+        return chat_ids
     except Exception as e:
         error_message = f"Error retrieving chat history for user_id: {user_id} with error: {str(e)}"
         logger.error(error_message)
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=error_message)
-
-    chat_ids = [chat["chat_id"] for chat in chats]
-    return chat_ids
 
 
 def _get_chat_history(chat_id: str) -> list[dict[str, str]]:
