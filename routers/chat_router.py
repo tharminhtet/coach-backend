@@ -5,7 +5,6 @@ from typing import List, Dict, Optional, Any, Union
 from db.db_operations import DbOperations
 from authorization import user_or_admin_required
 from datetime import datetime, time, timedelta
-from dateutil.relativedelta import relativedelta
 import uuid
 from services.onboarding_assistant import OnboardingAssistant, OnboardingPurposeData
 from services.workout_journal_assistant import (
@@ -229,6 +228,7 @@ async def get_chat_history_by_year_month(
     try:
         if request.month:
             start_date = datetime(request.year, request.month, 1)
+            # Making sure it doesn't overflow to the January 1st of next year.
             if request.month == 12:
                 end_date = datetime(request.year + 1, 1, 1) - timedelta(seconds=1)
             else:
