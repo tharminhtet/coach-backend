@@ -4,7 +4,8 @@ from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Any, Union
 from db.db_operations import DbOperations
 from authorization import user_or_admin_required
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
+from dateutil.relativedelta import relativedelta
 import uuid
 from services.onboarding_assistant import OnboardingAssistant, OnboardingPurposeData
 from services.workout_journal_assistant import (
@@ -26,6 +27,12 @@ router = APIRouter()
 logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)
 
+
+class ChatHistoryByYearMonthRequest(BaseModel):
+    year: int
+    month: Optional[int] = None
+    offset: int = Field(0, ge=0)
+    limit: int = Field(10, ge=1, le=100)
 
 class ChatMessage(BaseModel):
     content: str
@@ -198,6 +205,69 @@ async def get_chat_history_by_date_range(
     end_datetime = datetime.combine(end_datetime.date(), time.max)
     return _get_chat_ids_from_date_range(user_id, start_datetime, end_datetime)
 
+
+@router.get("/getChatHistoryByYearMonth")
+async def get_chat_history_by_year_month(
+    request: ChatHistoryByYearMonthRequest,
+    current_user: dict = Depends(user_or_admin_required)
+):
+    """
+    Returns a list of chat ids for the given user based on the specified year and month,
+    with pagination support using offset and limit.
+    If month is not provided, it returns chat ids for the entire year.
+    """
+    user_id = await get_user_id_internal(current_user["email"])
+
+    try:
+        if request.month:
+            start_date = datetime(request.year, request.month, 1)
+            end_date = start_date + relativedelta(months=1) - timedelta(seconds=1)
+        else:
+            start_date = datetime(request.year, 1, 1)
+            end_date = datetime(request.year, 12, 31, 23, 59, 59)
+
+        return _get_chat_ids_from_date_range_with_pagination(
+            user_id, start_date, end_date, request.offset, request.limit
+        )
+    except ValueError as ve:
+        error_message = f"Invalid date: {str(ve)}"
+        logger.error(error_message)
+        raise HTTPException(status_code=400, detail=error_message)
+    except Exception as e:
+        error_message = f"Error retrieving chat history: {str(e)}"
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=error_message)
+
+
+def _get_chat_ids_from_date_range_with_pagination(
+    user_id: str, 
+    start_time: datetime, 
+    end_time: datetime, 
+    offset: int, 
+    limit: int
+) -> List[str]:
+    """
+    Retrieve a list of chat_ids based on start date and end date from chat-history collection,
+    with pagination support.
+    """
+    db_operations = DbOperations("chat-history")
+    try:
+        chats = db_operations.collection.find(
+            {
+                "user_id": user_id,
+                "time": {"$gte": start_time.isoformat(), "$lte": end_time.isoformat()}
+            },
+            {"chat_id": 1, "time": 1}
+        ).sort("time", -1).skip(offset).limit(limit)
+        
+        chat_ids = [chat["chat_id"] for chat in chats]
+        return chat_ids
+    except Exception as e:
+        error_message = f"Error retrieving chat history for user_id: {user_id} with error: {str(e)}"
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=error_message)
 
 def _save_chat_messages(user_id: str, chat_id: str, messages: List[Dict[str, str]]):
     """
