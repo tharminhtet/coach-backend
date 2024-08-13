@@ -194,7 +194,7 @@ async def get_chat_history_by_date_range(
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=400, detail=error_message)
 
-    # Ensure the end date is at the end of the day
+    start_datetime = datetime.combine(start_datetime.date(), time.min)
     end_datetime = datetime.combine(end_datetime.date(), time.max)
     return _get_chat_ids_from_date_range(user_id, start_datetime, end_datetime)
 
