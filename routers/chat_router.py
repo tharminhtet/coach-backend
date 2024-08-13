@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional, Any, Union
+from typing import List, Dict, Optional, Union
 from db.db_operations import DbOperations
 from authorization import user_or_admin_required
 from datetime import datetime, time, timedelta
