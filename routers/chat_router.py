@@ -27,18 +27,6 @@ logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)
 
 
-class ChatHistoryByYearMonthRequest(BaseModel):
-    year: int
-    month: Optional[int] = None
-    offset: int = Field(0, ge=0)
-    limit: int = Field(10, ge=1, le=100)
-
-class ChatHistoryByDateRangeRequest(BaseModel):
-    start_date: str
-    end_date: str
-    offset: int = Field(0, ge=0)
-    limit: int = Field(10, ge=1, le=100)
-
 class ChatMessage(BaseModel):
     content: str
     role: str
@@ -190,7 +178,10 @@ async def get_today_chat_history(
 
 @router.get("/getChatHistoryByDateRange")
 async def get_chat_history_by_date_range(
-    request: ChatHistoryByDateRangeRequest,
+    start_date: str = Query(..., description="Start date in ISO format (YYYY-MM-DD)"),
+    end_date: str = Query(..., description="End date in ISO format (YYYY-MM-DD)"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
+    limit: int = Query(10, ge=1, le=100, description="Limit for pagination"),
     current_user: dict = Depends(user_or_admin_required)
 ):
     """
@@ -200,8 +191,8 @@ async def get_chat_history_by_date_range(
     user_id = await get_user_id_internal(current_user["email"])
 
     try:
-        start_datetime = datetime.fromisoformat(request.start_date)
-        end_datetime = datetime.fromisoformat(request.end_date)
+        start_datetime = datetime.fromisoformat(start_date)
+        end_datetime = datetime.fromisoformat(end_date)
     except ValueError:
         error_message = "Invalid date format. Use ISO format (YYYY-MM-DD)."
         logger.error(error_message)
@@ -210,12 +201,15 @@ async def get_chat_history_by_date_range(
 
     start_datetime = datetime.combine(start_datetime.date(), time.min)
     end_datetime = datetime.combine(end_datetime.date(), time.max)
-    return _get_chat_ids_from_date_range_with_pagination(user_id, start_datetime, end_datetime, request.offset, request.limit)
+    return _get_chat_ids_from_date_range_with_pagination(user_id, start_datetime, end_datetime, offset, limit)
 
 
 @router.get("/getChatHistoryByYearMonth")
 async def get_chat_history_by_year_month(
-    request: ChatHistoryByYearMonthRequest,
+    year: int = Query(..., description="Year for chat history"),
+    month: Optional[int] = Query(None, description="Month for chat history (optional)"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
+    limit: int = Query(10, ge=1, le=100, description="Limit for pagination"),
     current_user: dict = Depends(user_or_admin_required)
 ):
     """
@@ -226,19 +220,19 @@ async def get_chat_history_by_year_month(
     user_id = await get_user_id_internal(current_user["email"])
 
     try:
-        if request.month:
-            start_date = datetime(request.year, request.month, 1)
+        if month:
+            start_date = datetime(year, month, 1)
             # Making sure it doesn't overflow to the January 1st of next year.
-            if request.month == 12:
-                end_date = datetime(request.year + 1, 1, 1) - timedelta(seconds=1)
+            if month == 12:
+                end_date = datetime(year + 1, 1, 1) - timedelta(seconds=1)
             else:
-                end_date = datetime(request.year, request.month + 1, 1) - timedelta(seconds=1)
+                end_date = datetime(year, month + 1, 1) - timedelta(seconds=1)
         else:
-            start_date = datetime(request.year, 1, 1)
-            end_date = datetime(request.year, 12, 31, 23, 59, 59)
+            start_date = datetime(year, 1, 1)
+            end_date = datetime(year, 12, 31, 23, 59, 59)
 
         return _get_chat_ids_from_date_range_with_pagination(
-            user_id, start_date, end_date, request.offset, request.limit
+            user_id, start_date, end_date, offset, limit
         )
     except ValueError as ve:
         error_message = f"Invalid date: {str(ve)}"
