@@ -161,8 +161,9 @@ async def get_chat_history(chat_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/getTodayChatHistory", response_model=List[str])
+@router.get("/getChatHistoryByDate", response_model=List[str])
 async def get_today_chat_history(
+    date: str = Query(..., description="Start date in ISO format (YYYY-MM-DD)"),
     offset: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100), 
     current_user: dict = Depends(user_or_admin_required)):
@@ -170,11 +171,17 @@ async def get_today_chat_history(
     Returns a list of chat ids for given user from today, sorted by time (most recent first)
     """
     user_id = await get_user_id_internal(current_user["email"])
-    today = datetime.now().date()
-    today_start = datetime.combine(today, time.min)
-    today_end = datetime.combine(today, time.max)
+    try:
+        date_datetime = datetime.fromisoformat(date)
+    except ValueError:
+        error_message = "Invalid date format. Use ISO format (YYYY-MM-DD)."
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=400, detail=error_message)
+    date_start = datetime.combine(date_datetime.date(), time.min)
+    date_end = datetime.combine(date_datetime.date(), time.max)
 
-    return _get_chat_ids_from_date_range_with_pagination(user_id, today_start, today_end, offset, limit)
+    return _get_chat_ids_from_date_range_with_pagination(user_id, date_start, date_end, offset, limit)
 
 @router.get("/getChatHistoryByDateRange")
 async def get_chat_history_by_date_range(
