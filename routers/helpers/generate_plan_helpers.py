@@ -62,6 +62,33 @@ def _extract_user_data(
 
     return user_data
 
+def _get_last_week_start_date(user_id: str) -> str | None:
+    """
+    Retrieve the start_date of the last week from training-plans collection.
+    Returns None if no training plan exists.
+    """
+    training_plans = _get_training_plan(user_id)
+    current_year = str(datetime.now().year)
+
+    if training_plans and "training_plan" in training_plans:
+        # Check if there's a plan for the current year
+        if current_year in training_plans["training_plan"]:
+            year_plan = training_plans["training_plan"][current_year]
+            if year_plan:
+                # Get the last week number
+                last_week = max(year_plan.keys(), key=lambda x: int(x.split()[1]))
+                return year_plan[last_week]["start_date"]
+        
+        # If not found in current year, check the previous year
+        previous_year = str(int(current_year) - 1)
+        if previous_year in training_plans["training_plan"]:
+            year_plan = training_plans["training_plan"][previous_year]
+            if year_plan:
+                last_week = max(year_plan.keys(), key=lambda x: int(x.split()[1]))
+                return year_plan[last_week]["start_date"]
+
+    return None
+
 
 def _get_all_old_weekly_training_plans(user_id: str, year: str) -> list[dict[str, str]]:
     """

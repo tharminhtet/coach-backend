@@ -41,15 +41,17 @@ async def generateWeeklyPlan(
         datetime.now() - timedelta(days=datetime.now().weekday())
     ).strftime("%Y-%m-%d")
     year = str(datetime.now().year)
+
+    # TODO: FOR TESTING PURPOSE, TO BE UNCOMMENTED
     # validate if weekly training plan is not already generated for the same week
-    if not gph._validate_generate_weekly_plan(user_id, start_of_week, year):
-        error_message = f"The plan is already generated for the week: {start_of_week}"
-        logger.error(error_message)
-        logger.error(traceback.format_exc())
-        return {
-            "status": "error",
-            "message": error_message,
-        }, 400
+    # if not gph._validate_generate_weekly_plan(user_id, start_of_week, year):
+    #     error_message = f"The plan is already generated for the week: {start_of_week}"
+    #     logger.error(error_message)
+    #     logger.error(traceback.format_exc())
+    #     return {
+    #         "status": "error",
+    #         "message": error_message,
+    #     }, 400
 
     # retrieve user details from chat or db
     user_data = gph._extract_user_data(user_id=user_id, chat_id=chat_id)
@@ -63,6 +65,11 @@ async def generateWeeklyPlan(
     week_number = (
         1 if len(old_weekly_training_plans) == 0 else len(old_weekly_training_plans) + 1
     )
+
+    # TODO: FOR TESTING PURPOSE, TO BE REMOVED
+    temp_start_of_week = gph._get_last_week_start_date(user_id)
+    if temp_start_of_week is not None:
+        start_of_week = (datetime.strptime(temp_start_of_week, "%Y-%m-%d") + timedelta(days=7)).strftime("%Y-%m-%d")
 
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     current_day = datetime.now().strftime("%Y-%m-%d")
