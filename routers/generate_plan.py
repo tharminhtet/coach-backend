@@ -221,7 +221,7 @@ async def update_daily_summary(
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=error_message)
 
-    return {"status": "success", "message": "Daily summary updated successfully"}
+    return {"status": "success", "message": "Daily summary updated successfully"}, 200
 
 
 # TODO: for testing to update multiple daily summary based on week_id
@@ -253,4 +253,4 @@ async def update_all_daily_summaries(
             logger.error(traceback.format_exc())
             continue
 
-    return {"status": "success", "message": "All daily summaries updated successfully"}
+    return {"status": "success", "message": "All daily summaries updated successfully"}, 200
