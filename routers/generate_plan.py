@@ -222,3 +222,35 @@ async def update_daily_summary(
         raise HTTPException(status_code=500, detail=error_message)
 
     return {"status": "success", "message": "Daily summary updated successfully"}
+
+
+# TODO: for testing to update multiple daily summary based on week_id
+@router.put("/updateAllDailySummaries/{week_id}")
+async def update_all_daily_summaries(
+    week_id: str, current_user: dict = Depends(user_or_admin_required)
+):
+    user_id = await get_user_id_internal(current_user["email"])
+    weekly_plan_dboperations = DbOperations("weekly-training-plans")
+    weekly_plan = weekly_plan_dboperations.read_one_from_mongodb({"week_id": week_id, "user_id": user_id})
+    
+    if not weekly_plan:
+        raise HTTPException(status_code=404, detail="Weekly plan not found")
+
+    client = OpenAI()
+    assistant = WorkoutJournalAssistant(client)
+
+    for workout in weekly_plan["workouts"]:
+        date = workout["date"]
+        summary = await assistant.summarize(date, current_user["email"], [])
+
+        update_query = {"$set": {"workouts.$.summary": summary}}
+        match_query = {"week_id": week_id, "user_id": user_id, "workouts.date": date}
+
+        try:
+            weekly_plan_dboperations.update_from_mongodb(match_query, update_query)
+        except Exception as e:
+            logger.error(f"Error updating summary for date: {date} with error: {str(e)}")
+            logger.error(traceback.format_exc())
+            continue
+
+    return {"status": "success", "message": "All daily summaries updated successfully"}
