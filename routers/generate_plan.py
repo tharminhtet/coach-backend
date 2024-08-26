@@ -72,16 +72,16 @@ async def generateWeeklyPlan(
         start_of_week = (datetime.strptime(temp_start_of_week, "%Y-%m-%d") + timedelta(days=7)).strftime("%Y-%m-%d")
 
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    current_day = datetime.now().strftime("%Y-%m-%d")
+    # current_day = datetime.now().strftime("%Y-%m-%d")
     with open("prompts/generate_fitness_plan_system_message.txt", "r") as file:
         system_message = file.read()
         system_message = system_message.replace("{user_data}", json.dumps(user_data))
         system_message = system_message.replace(
             "{start_of_week}", json.dumps(start_of_week)
         )
-        system_message = system_message.replace(
-            "{current_day}", json.dumps(current_day)
-        )
+        # system_message = system_message.replace(
+        #     "{current_day}", json.dumps(current_day)
+        # )
         system_message = system_message.replace(
             "{old_training_plans}", json.dumps(old_weekly_training_plans)
         )

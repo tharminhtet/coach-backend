@@ -6,14 +6,12 @@ If the user has successfully completed the exercise/running from the status of o
 Feel free to add new and different workout exercises to new fitness workout plan for a new week and they don't have to be the same as exercises from old_training_plans as long as it aligns with user's goal and constraint.
 
 Create a workout plan based on given user's equipments and preferred days of the week starting from start_of_the_week.
-Do not backfill the passed days based on current_day. For example, don't backfill Monday to Friday if current_day is Saturday.
 A week always starts from Monday and ends on Sunday.
 The workout has to make sense with respective to user fitness level.
 The plan also has to align with the user's goal and constraint. 
 For each workout in the plan, provide short specific details including numerical weights, reps, sets, type of equipments and rest periods in the description.
 
-<Time Context>
-{current_day}
+
 {start_of_the_week}
 </Time Context>
 
