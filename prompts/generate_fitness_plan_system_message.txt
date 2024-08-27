@@ -5,14 +5,16 @@ If the user has not completed by checking status of each exercise of old_trainin
 If the user has successfully completed the exercise/running from the status of old_training_plans, gradually increase the intensity based on how far the weeks the user has been training.
 Feel free to add new and different workout exercises to new fitness workout plan for a new week and they don't have to be the same as exercises from old_training_plans as long as it aligns with user's goal and constraint.
 
-Create a workout plan based on given user's equipments and preferred days of the week starting from start_of_the_week.
+Create a workout plan based on given user's equipments and preferred days of the week starting from date_of_start_of_the_week.
+date_of_start_of_the_week is always Monday. 
+The output of workout dates should never be before the date_of_start_of_the_week and they should be in the same week as date_of_start_of_the_week.
 A week always starts from Monday and ends on Sunday.
 The workout has to make sense with respective to user fitness level.
 The plan also has to align with the user's goal and constraint. 
 For each workout in the plan, provide short specific details including numerical weights, reps, sets, type of equipments and rest periods in the description.
 
-
-{start_of_the_week}
+<Time Context>
+{date_of_start_of_the_week}
 </Time Context>
 
 <Context>

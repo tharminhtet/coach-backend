@@ -37,7 +37,7 @@ async def generateWeeklyPlan(
     Generate weekly training plan for given user.
     """
     user_id = await get_user_id_internal(current_user["email"])
-    start_of_week = (
+    date_of_start_of_the_week = (
         datetime.now() - timedelta(days=datetime.now().weekday())
     ).strftime("%Y-%m-%d")
     year = str(datetime.now().year)
@@ -69,15 +69,16 @@ async def generateWeeklyPlan(
     # TODO: FOR TESTING PURPOSE, TO BE REMOVED
     temp_start_of_week = gph._get_last_week_start_date(user_id)
     if temp_start_of_week is not None:
-        start_of_week = (datetime.strptime(temp_start_of_week, "%Y-%m-%d") + timedelta(days=7)).strftime("%Y-%m-%d")
+        date_of_start_of_the_week = (datetime.strptime(temp_start_of_week, "%Y-%m-%d") + timedelta(days=7)).strftime("%Y-%m-%d")
 
+    print(date_of_start_of_the_week)
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     # current_day = datetime.now().strftime("%Y-%m-%d")
     with open("prompts/generate_fitness_plan_system_message.txt", "r") as file:
         system_message = file.read()
         system_message = system_message.replace("{user_data}", json.dumps(user_data))
         system_message = system_message.replace(
-            "{start_of_week}", json.dumps(start_of_week)
+            "{date_of_start_of_the_week}", json.dumps(date_of_start_of_the_week)
         )
         # system_message = system_message.replace(
         #     "{current_day}", json.dumps(current_day)
@@ -101,14 +102,14 @@ async def generateWeeklyPlan(
     logger.info("Plan is successfully generated.")
     # save the new weekly training plan in weekly-training-plans collection
     week_id = gph._save_new_weekly_training_plan(
-        user_id=user_id, fitness_plan=json.loads(response), start_of_week=start_of_week
+        user_id=user_id, fitness_plan=json.loads(response), start_of_week=date_of_start_of_the_week
     )
     # update the user overall training plan with the new week training plan in training-plans collection.
     gph._update_overall_training_plan(
         user_id=user_id,
         week_id=week_id,
         week_number=week_number,
-        start_of_week=start_of_week,
+        start_of_week=date_of_start_of_the_week,
         year=year,
     )
     logger.info("Plan is successfully stored in db.")
