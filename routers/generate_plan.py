@@ -71,7 +71,6 @@ async def generateWeeklyPlan(
     if temp_start_of_week is not None:
         date_of_start_of_the_week = (datetime.strptime(temp_start_of_week, "%Y-%m-%d") + timedelta(days=7)).strftime("%Y-%m-%d")
 
-    print(date_of_start_of_the_week)
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     # current_day = datetime.now().strftime("%Y-%m-%d")
     with open("prompts/generate_fitness_plan_system_message.txt", "r") as file:
