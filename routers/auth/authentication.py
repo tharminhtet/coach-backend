@@ -51,7 +51,6 @@ class Token(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
-    confirm_password: str
 
 @router.post("/register")
 async def register(userProfile: CreateUserRequest):
@@ -137,7 +136,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=error_message, 
                             headers={"WWW-Authenticate": "Bearer"})
 
-@router.post("/reset-password-request")
+@router.post("/reset_password_request")
 async def reset_password_request(email: str):
     if not _is_valid_email(email):
         raise HTTPException(
@@ -159,19 +158,13 @@ async def reset_password_request(email: str):
     
     return {"message": "A password reset link has been successfully sent."}, 200
 
-@router.post("/reset-password")
+@router.post("/reset_password")
 async def reset_password(request: ResetPasswordRequest):
     token_data = _validate_reset_token(request.token)
     if not token_data:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired token."
-        )
-    
-    if request.new_password != request.confirm_password:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Passwords do not match."
         )
     
     _update_user_password(token_data["email"], request.new_password)
