@@ -153,6 +153,7 @@ async def reset_password_request(email: str):
     reset_token = secrets.token_urlsafe(32)
     _store_reset_token(email, reset_token)
     
+    # TODO: reset_link needs to be updated later
     reset_link = f"https://yourapp.com/reset-password?token={reset_token}"
     _send_reset_email(email, reset_link)
     
