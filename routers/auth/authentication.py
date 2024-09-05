@@ -8,11 +8,15 @@ from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from typing import Annotated
 from enum import Enum
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 import uuid
 import os
 import re
 import logging
 import traceback
+import secrets
+import smtplib
 
 load_dotenv()
 
@@ -43,6 +47,11 @@ class CreateUserRequest(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+    confirm_password: str
 
 @router.post("/register")
 async def register(userProfile: CreateUserRequest):
@@ -127,6 +136,136 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=error_message, 
                             headers={"WWW-Authenticate": "Bearer"})
+
+@router.post("/reset-password-request")
+async def reset_password_request(email: str):
+    if not _is_valid_email(email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email address"
+        )
+    
+    db_ops = DbOperations("user-profiles")
+    user = db_ops.read_one_from_mongodb({"email": email})
+    if not user:
+        # To prevent email enumeration, we'll return a success message even if the user doesn't exist
+        return {"message": "There is no existing account associated with the email."}, 200
+    
+    reset_token = secrets.token_urlsafe(32)
+    _store_reset_token(email, reset_token)
+    
+    reset_link = f"https://yourapp.com/reset-password?token={reset_token}"
+    _send_reset_email(email, reset_link)
+    
+    return {"message": "A password reset link has been successfully sent."}, 200
+
+@router.post("/reset-password")
+async def reset_password(request: ResetPasswordRequest):
+    token_data = _validate_reset_token(request.token)
+    if not token_data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired token."
+        )
+    
+    if request.new_password != request.confirm_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Passwords do not match."
+        )
+    
+    _update_user_password(token_data["email"], request.new_password)
+    _delete_reset_token(request.token)
+    
+    return {"message": "Password has been reset successfully"}, 200
+
+def _store_reset_token(email: str, token: str):
+    expiration = datetime.utcnow() + timedelta(minutes=10)
+    db_ops = DbOperations("password-reset-tokens")
+    db_ops.write_to_mongodb({
+        "email": email,
+        "token": token,
+        "expiration": expiration
+    })
+
+def _send_reset_email(email: str, reset_link: str):
+    smtp_server = os.getenv("SMTP_SERVER")
+    smtp_port = int(os.getenv("SMTP_PORT", 587))
+    smtp_username = os.getenv("SMTP_USERNAME")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+    sender_email = os.getenv("SENDER_EMAIL")
+
+    message = MIMEMultipart("alternative")
+    message["Subject"] = "Password Reset Request"
+    message["From"] = sender_email
+    message["To"] = email
+
+    text = f"""
+    Hello,
+
+    You have requested to reset your password. Please click on the link below to reset your password:
+
+    {reset_link}
+
+    If you did not request this, please ignore this email.
+
+    This link will expire in 10 minutes.
+
+    Best regards,
+    Nirvana Coach
+    """
+
+    html = f"""
+    <html>
+    <body>
+        <p>Hello,</p>
+        <p>You have requested to reset your password. Please click on the link below to reset your password:</p>
+        <p><a href="{reset_link}">{reset_link}</a></p>
+        <p>If you did not request this, please ignore this email.</p>
+        <p>This link will expire in 10 minutes.</p>
+        <p>Best regards,<br>Nirvana Coach</p>
+    </body>
+    </html>
+    """
+
+    part1 = MIMEText(text, "plain")
+    part2 = MIMEText(html, "html")
+
+    message.attach(part1)
+    message.attach(part2)
+
+    try:
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.ehlo()  # Can be omitted
+            server.starttls()
+            server.ehlo()  # Can be omitted
+            server.login(smtp_username, smtp_password)
+            server.sendmail(sender_email, email, message.as_string())
+        logger.info(f"Password reset email sent to {email}")
+    except Exception as e:
+        error_message = f"Failed to send password reset email to {email}: {str(e)}"
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail="Failed to send password reset email")
+
+def _validate_reset_token(token: str):
+    db_ops = DbOperations("password-reset-tokens")
+    token_data = db_ops.read_one_from_mongodb({"token": token})
+    if not token_data or token_data["expiration"] < datetime.utcnow():
+        return None
+    return token_data
+
+def _update_user_password(email: str, new_password: str):
+    db_ops = DbOperations("user-profiles")
+    hashed_password = pwd_context.hash(new_password)
+    db_ops.update_from_mongodb(
+        {"email": email},
+        {"$set": {"hashed_password": hashed_password}}
+    )
+
+def _delete_reset_token(token: str):
+    db_ops = DbOperations("password-reset-tokens")
+    db_ops.delete_one_from_mongodb({"token": token})
 
 def _create_access_token(email: str, role: str, expires_delta: timedelta):
     encode = {'sub': email, 'role': role}
