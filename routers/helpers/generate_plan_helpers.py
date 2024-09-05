@@ -317,6 +317,57 @@ async def _get_weekly_training_plan_internal(target_date: datetime, user_id: str
     weekly_plan = _get_weekly_training_plan(week_id)
     return weekly_plan
 
+def get_workout_by_date(week_id: str, date: str) -> dict:
+    """
+    Retrieve the workout plan for a specific date within a given week.
+    """
+    weekly_plan_dboperations = DbOperations("weekly-training-plans")
+    query = {"week_id": week_id, "workouts.date": date}
+    projection = {"workouts.$": 1}
+    
+    try:
+        result = weekly_plan_dboperations.read_one_from_mongodb_with_projection(query, projection)
+        if result and 'workouts' in result and len(result['workouts']) > 0:
+            return result['workouts'][0]
+        else:
+            error_message = f"No workout plan found for week_id: {week_id} and date: {date}"
+            logger.error(error_message)
+            logger.error(traceback.format_exc())
+            raise HTTPException(status_code=404, detail=error_message)
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        error_message = f"Error retrieving workout for week_id: {week_id} and date: {date}. Error: {str(e)}"
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=error_message)
+
+def update_workout_by_date(week_id: str, date: str, new_workout: dict):
+    """
+    Update with new_workout based on given week_id and date.
+    """
+    weekly_plan_dboperations = DbOperations("weekly-training-plans")
+    update_query = {
+        "$set": {
+            "workouts.$.exercises": new_workout["exercises"],
+            "workouts.$.reasoning": new_workout["reasoning"]
+        }
+    }
+    match_query = {"week_id": week_id, "workouts.date": date}
+    
+    try:
+        existing_workout = weekly_plan_dboperations.read_one_from_mongodb(match_query)
+        if not existing_workout:
+            error_message = f"No workout found for week_id: {week_id} and date: {date}"
+            logger.error(error_message)
+            logger.error(traceback.format_exc())
+            raise HTTPException(status_code=404, detail=error_message)
+        weekly_plan_dboperations.update_from_mongodb(match_query, update_query)
+    except Exception as e:
+        error_message = f"Error updating workout for date: {date} in week_id: {week_id}. Error: {str(e)}"
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=error_message)
 
 def update_weekly_summary(user_id: str):
     """

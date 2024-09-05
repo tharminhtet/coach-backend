@@ -223,7 +223,6 @@ async def update_daily_summary(
 
     return {"status": "success", "message": "Daily summary updated successfully"}
 
-
 # TODO: for testing to update multiple daily summary based on week_id
 @router.put("/updateAllDailySummaries/{week_id}")
 async def update_all_daily_summaries(
@@ -254,3 +253,58 @@ async def update_all_daily_summaries(
             continue
 
     return {"status": "success", "message": "All daily summaries updated successfully"}, 200
+
+@router.put("/updateWorkoutByDate")
+async def update_workout(
+    week_id: str,
+    date: str,
+    chat_id: str,
+    current_user: dict = Depends(user_or_admin_required)
+):
+    """
+    Update the workout for a given date in the weekly-training-plans collection.
+    """
+    try:
+        # Get user details
+        user_id = await get_user_id_internal(current_user["email"])
+        user_details = gph._extract_user_data(user_id=user_id)
+
+        # Get chat history and format chat history
+        chat_history = gph._get_chat_history(chat_id)
+        formatted_chat_history = ""
+        for message in chat_history:
+            formatted_chat_history += f"{message['role']} : {message['content']}\n"
+
+        # Get original workout 
+        original_workout = gph.get_workout_by_date(week_id, date)
+
+        # Generate new workout plan
+        client = OpenAI()
+        with open("prompts/regenerate_specific_date_workout_system_message.txt", "r") as file:
+            system_message = file.read()
+            system_message = system_message.replace("{user_details}", json.dumps(user_details))
+            system_message = system_message.replace("{chat_history}", formatted_chat_history)
+            system_message = system_message.replace("{original_workout}", json.dumps(original_workout))
+
+        user_message = "Create a new workout plan for a single day based on the given information."
+
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": user_message},
+            ],
+        )
+        new_workout = json.loads(response.choices[0].message.content)
+        print(f"New workout plan generated for date: {date}")
+
+        # Update the workout in the database
+        gph.update_workout_by_date(week_id, date, new_workout)
+        return new_workout
+
+    except Exception as e:
+        error_message = f"Error updating workout for date: {date} with error: {str(e)}"
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=error_message)
