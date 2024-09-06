@@ -179,7 +179,7 @@ async def get_user_id(username: str = None):
 async def delete_user_profile(current_user: dict = Depends(user_or_admin_required)):
     """
     Delete everything associated with given user_id: 
-    user_profile, user_details, training_plan, weekly_traning_plan
+    user_profile, user_details, training_plan, weekly_traning_plan, and chat_history
     """
     user_id = await get_user_id_internal(current_user['email'])   
     query = {"user_id": user_id}
@@ -213,7 +213,8 @@ async def delete_user_profile(current_user: dict = Depends(user_or_admin_require
         ("weekly-training-plans", "delete_many_from_mongodb"),
         ("training-plans", "delete_one_from_mongodb"),
         ("user-details", "delete_one_from_mongodb"),
-        ("user-profiles", "delete_one_from_mongodb")
+        ("user-profiles", "delete_one_from_mongodb"),
+        ("chat-history", "delete_many_from_mongodb")  
     ]
 
     for collection, delete_method in delete_operations:
