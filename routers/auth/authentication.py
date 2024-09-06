@@ -4,19 +4,18 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from db.db_operations import DbOperations
 from passlib.context import CryptContext 
+from notifications.smtp_notifications import SMTPNotifications
+from notifications.sendGrid_notifications import SendGridNotifications
 from datetime import datetime, timedelta 
 from jose import JWTError, jwt
 from typing import Annotated
 from enum import Enum
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 import uuid
 import os
 import re
 import logging
 import traceback
 import secrets
-import smtplib
 
 load_dotenv()
 
@@ -183,64 +182,47 @@ def _store_reset_token(email: str, token: str):
     })
 
 def _send_reset_email(email: str, reset_link: str):
-    smtp_server = os.getenv("SMTP_SERVER")
-    smtp_port = int(os.getenv("SMTP_PORT", 587))
-    smtp_username = os.getenv("SMTP_USERNAME")
-    smtp_password = os.getenv("SMTP_PASSWORD")
-    sender_email = os.getenv("SENDER_EMAIL")
+    # text = f"""
+    # Hello,
 
-    message = MIMEMultipart("alternative")
-    message["Subject"] = "Password Reset Request"
-    message["From"] = sender_email
-    message["To"] = email
+    # You have requested to reset your password. Please click on the link below to reset your password:
 
-    text = f"""
-    Hello,
+    # {reset_link}
 
-    You have requested to reset your password. Please click on the link below to reset your password:
+    # If you did not request this, please ignore this email.
 
-    {reset_link}
+    # This link will expire in 10 minutes.
 
-    If you did not request this, please ignore this email.
+    # Best regards,
+    # Nirvana Coach
+    # """
 
-    This link will expire in 10 minutes.
+    # html_content = f"""
+    # <html>
+    # <body>
+    #     <p>Hello,</p>
+    #     <p>You have requested to reset your password. Please click on the link below to reset your password:</p>
+    #     <p><a href="{reset_link}">{reset_link}</a></p>
+    #     <p>If you did not request this, please ignore this email.</p>
+    #     <p>This link will expire in 10 minutes.</p>
+    #     <p>Best regards,<br>Novana Coach</p>
+    # </body>
+    # </html>
+    # """
+    subject = "Password Reset Request"
+    # email_notifications = SMTPNotifications(text, email, html_content, subject)
+    # email_notifications.send_email()
 
-    Best regards,
-    Nirvana Coach
-    """
-
-    html = f"""
-    <html>
-    <body>
+    sendGrid_html_content = f'''
         <p>Hello,</p>
         <p>You have requested to reset your password. Please click on the link below to reset your password:</p>
         <p><a href="{reset_link}">{reset_link}</a></p>
         <p>If you did not request this, please ignore this email.</p>
         <p>This link will expire in 10 minutes.</p>
-        <p>Best regards,<br>Nirvana Coach</p>
-    </body>
-    </html>
-    """
-
-    part1 = MIMEText(text, "plain")
-    part2 = MIMEText(html, "html")
-
-    message.attach(part1)
-    message.attach(part2)
-
-    try:
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.ehlo()  # Can be omitted
-            server.starttls()
-            server.ehlo()  # Can be omitted
-            server.login(smtp_username, smtp_password)
-            server.sendmail(sender_email, email, message.as_string())
-        logger.info(f"Password reset email sent to {email}")
-    except Exception as e:
-        error_message = f"Failed to send password reset email to {email}: {str(e)}"
-        logger.error(error_message)
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail="Failed to send password reset email")
+        <p>Best regards,<br>Novana Coach</p>
+        '''
+    sendGrid_email_notifications = SendGridNotifications(email, sendGrid_html_content, subject)
+    sendGrid_email_notifications.send_email()
 
 def _validate_reset_token(token: str):
     db_ops = DbOperations("password-reset-tokens")
