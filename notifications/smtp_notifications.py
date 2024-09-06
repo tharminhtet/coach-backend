@@ -47,7 +47,7 @@ class SMTPNotifications:
                 server.sendmail(self.sender_email, self.email, self.message.as_string())
             logger.info(f"{self.subject} sent to {self.email}")
         except Exception as e:
-            error_message = f"Failed to send {self.subject} email to {self.email}: {str(e)}"
+            error_message = f"Failed to send {self.subject} to {self.email}: {str(e)}"
             logger.error(error_message)
             logger.error(traceback.format_exc())
             raise HTTPException(status_code=500, detail=error_message)
