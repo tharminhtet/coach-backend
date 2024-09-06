@@ -45,7 +45,7 @@ class SMTPNotifications:
                 server.ehlo()  # Can be omitted
                 server.login(self.smtp_username, self.smtp_password)
                 server.sendmail(self.sender_email, self.email, self.message.as_string())
-            logger.info(f"{self.subject} email sent to {self.email}")
+            logger.info(f"{self.subject} sent to {self.email}")
         except Exception as e:
             error_message = f"Failed to send {self.subject} email to {self.email}: {str(e)}"
             logger.error(error_message)
