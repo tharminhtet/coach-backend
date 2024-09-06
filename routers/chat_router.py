@@ -320,12 +320,24 @@ def _save_chat_messages(
 def _get_chat_history(chat_id: str) -> list[dict[str, str]]:
     """
     Retrieve chat history from the database.
-    Always remove the first message if it's a system message.
-    Remove the first user message if the purpose is "workout_journal".
+    Cleanup from chat history.
     Return empty list if chat_id is not found.
     """
     db_operations = DbOperations("chat-history")
     chat_document = db_operations.collection.find_one({"chat_id": chat_id})
+    if chat_document and "messages" in chat_document:
+        messages = _cleanup_chat_history(chat_document)
+        return [
+            {"role": m["role"], "content": m["content"]}
+            for m in messages
+        ]
+    return []
+
+def _cleanup_chat_history(chat_document: dict):
+    """
+    Always remove the first message if it's a system message.
+    Remove the first user message if the purpose is "workout_journal".
+    """
     if chat_document and "messages" in chat_document:
         messages = chat_document["messages"]
         
@@ -339,8 +351,4 @@ def _get_chat_history(chat_id: str) -> list[dict[str, str]]:
             if first_user_index is not None:
                 messages.pop(first_user_index)
 
-        return [
-            {"role": m["role"], "content": m["content"]}
-            for m in messages
-        ]
-    return []
+    return messages
