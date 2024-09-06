@@ -136,7 +136,7 @@ async def chat(
             if full_response:
                 ai_message = {"role": "assistant", "content": full_response.response}
                 chat_history.extend([user_message, ai_message])
-                _save_chat_messages(user_id, chat_id, chat_history)
+                _save_chat_messages(user_id, chat_id, chat_history, request.purpose, request.purpose_data)
 
         return StreamingResponse(generate(), media_type="text/event-stream")
     except Exception as e:
@@ -292,17 +292,25 @@ def _get_chat_ids_from_date_range_with_pagination(
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=error_message)
 
-def _save_chat_messages(user_id: str, chat_id: str, messages: List[Dict[str, str]]):
+def _save_chat_messages(
+    user_id: str, 
+    chat_id: str, 
+    messages: List[Dict[str, str]], 
+    purpose: ChatPurpose, 
+    purpose_content: Optional[Union[OnboardingChatRequest, WorkoutJournalChatRequest, WorkoutGuideChatRequest]]):
     """
     Save chat messages to the database.
     """
     db_operations = DbOperations("chat-history")
+    purpose_content_dict = purpose_content.model_dump() if purpose_content else None
     db_operations.collection.update_one(
         {"chat_id": chat_id},
         {
             "$set": {
                 "user_id": user_id,
                 "time": datetime.now().isoformat(),
+                "purpose": purpose.value,
+                "purpose_content": purpose_content_dict,
                 "messages": messages
             }
         },
@@ -312,13 +320,27 @@ def _save_chat_messages(user_id: str, chat_id: str, messages: List[Dict[str, str
 def _get_chat_history(chat_id: str) -> list[dict[str, str]]:
     """
     Retrieve chat history from the database.
+    Always remove the first message if it's a system message.
+    Remove the first user message if the purpose is "workout_journal".
     Return empty list if chat_id is not found.
     """
     db_operations = DbOperations("chat-history")
     chat_document = db_operations.collection.find_one({"chat_id": chat_id})
     if chat_document and "messages" in chat_document:
+        messages = chat_document["messages"]
+        
+        # Always remove the first message if it's a system message
+        if messages and messages[0]["role"] == "system":
+            messages.pop(0)
+        
+        # Remove the first user message if the purpose is "workout_journal"
+        if chat_document.get("purpose") == ChatPurpose.WORKOUT_JOURNAL.value:
+            first_user_index = next((i for i, m in enumerate(messages) if m["role"] == "user"), None)
+            if first_user_index is not None:
+                messages.pop(first_user_index)
+
         return [
             {"role": m["role"], "content": m["content"]}
-            for m in chat_document["messages"]
+            for m in messages
         ]
     return []
