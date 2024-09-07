@@ -178,7 +178,8 @@ def _store_reset_token(email: str, token: str):
     db_ops.write_to_mongodb({
         "email": email,
         "token": token,
-        "expiration": expiration
+        "expiration": expiration,
+        "timestamp": datetime.utcnow()
     })
 
 def _send_reset_email(email: str, reset_link: str):
@@ -241,7 +242,11 @@ def _update_user_password(email: str, new_password: str):
 
 def _delete_reset_token(token: str):
     db_ops = DbOperations("password-reset-tokens")
-    db_ops.delete_one_from_mongodb({"token": token})
+    result = db_ops.delete_one_from_mongodb({"token": token})
+    # Check if a document was actually deleted
+    if result.get("deleted_count", 0) == 0:
+        logger.info(f"Token {token} was not found or already deleted.")
+    return result
 
 def _create_access_token(email: str, role: str, expires_delta: timedelta):
     encode = {'sub': email, 'role': role}
