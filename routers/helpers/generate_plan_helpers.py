@@ -281,10 +281,7 @@ async def _get_weekly_training_plan_internal(target_date: datetime, user_id: str
             week_id = week_data["week_id"]
             break
     if not week_id:
-        error_message = "No matching week found for the given date"
-        logger.error(error_message)
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=404, detail=error_message)
+        return None
 
     # Retrieve the weekly training plan
     weekly_plan = _get_weekly_training_plan(week_id)

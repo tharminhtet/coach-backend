@@ -201,20 +201,20 @@ async def update_daily_summary(
     user_id = await get_user_id_internal(current_user["email"])
     target_date = datetime.strptime(date, "%Y-%m-%d")
     weekly_plan = await gph._get_weekly_training_plan_internal(target_date, user_id)
+    if weekly_plan: 
+        weekly_plan_dboperations = DbOperations("weekly-training-plans")
+        update_query = {"$set": {"workouts.$.summary": checkin_summary}}
+        match_query = {"week_id": weekly_plan["week_id"], "workouts.date": date}
 
-    weekly_plan_dboperations = DbOperations("weekly-training-plans")
-    update_query = {"$set": {"workouts.$.summary": checkin_summary}}
-    match_query = {"week_id": weekly_plan["week_id"], "workouts.date": date}
+        try:
+            weekly_plan_dboperations.update_from_mongodb(match_query, update_query)
+        except Exception as e:
+            error_message = f"Error updating summary for date: {date} with error: {str(e)}"
+            logger.error(error_message)
+            logger.error(traceback.format_exc())
+            raise HTTPException(status_code=500, detail=error_message)
 
-    try:
-        weekly_plan_dboperations.update_from_mongodb(match_query, update_query)
-    except Exception as e:
-        error_message = f"Error updating summary for date: {date} with error: {str(e)}"
-        logger.error(error_message)
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=error_message)
-
-    return {"status": "success", "message": "Daily summary updated successfully"}
+        return {"status": "success", "message": "Daily summary updated successfully"}
 
 
 @router.put("/updateWorkoutByDate")
