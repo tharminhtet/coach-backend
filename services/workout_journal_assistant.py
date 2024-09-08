@@ -79,16 +79,6 @@ class WorkoutJournalAssistant(BaseAssistant):
             system_message = chat_history[0]["content"]
             chat_history = chat_history[1:]
 
-        # training_plan = await self._retrieve_training_plan(
-        #     purpose_data["workout_date"], purpose_data["user_email"]
-        # )
-        # system_message = system_message.replace(
-        #     "{%weekly_workout_plan%}",
-        #     json.dumps(training_plan),
-        # )
-        # system_message = system_message.replace(
-        #     "{%current_date%}", purpose_data["workout_date"].strftime("%Y-%m-%d")
-        # )
         response_data = self.client.chat_json_output_stream(
             chat_history, system_message, user_message, ResponseModel
         )
