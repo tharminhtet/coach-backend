@@ -43,7 +43,7 @@ class WorkoutGuideAssistant(BaseAssistant):
         chat_history: list[dict],
         user_message: str,
         purpose_data: WorkoutGuidePurposeData,
-    ) -> StreamingResponse:
+    ) -> tuple[StreamingResponse, Optional[str]]:
         """
         Process a chat message for the workout guide assistant.
 
@@ -55,10 +55,18 @@ class WorkoutGuideAssistant(BaseAssistant):
                 user_email (str): The email of the user.
 
         Returns:
-            StreamingResponse: The AI's response as a stream.
+            tuple[StreamingResponse, Optional[str]]: The AI's response as a stream and the system message if it's a new conversation.
         """
-        with open(prompt_map["workout_guide_checkin_chat"], "r") as file:
-            system_message = file.read()
+        system_message = None
+        is_new_conversation = not chat_history
+
+        if is_new_conversation:
+            with open(prompt_map["workout_guide_checkin_chat"], "r") as file:
+                system_message = file.read()
+        elif chat_history[0]["role"] == "system":
+            system_message = chat_history[0]["content"]
+            chat_history = chat_history[1:]
+
 
         workout_journal_data = await self._retrieve_workout_journal_data(
             purpose_data["workout_date"], purpose_data["user_email"]
@@ -71,7 +79,8 @@ class WorkoutGuideAssistant(BaseAssistant):
         response_data = self.client.chat_json_output_stream(
             chat_history, system_message, user_message, ResponseModel
         )
-        return response_data
+
+        return response_data, system_message if is_new_conversation else None
 
     async def _retrieve_workout_journal_data(
         self, workout_date: datetime, user_email: str
