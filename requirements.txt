@@ -9,3 +9,4 @@ instructor
 fastapi
 pydantic==2.7.4
 anthropic
+sendgrid
