@@ -26,8 +26,8 @@ class SendGridNotifications:
 
     def send_email(self):
         try:
-            sg = SendGridAPIClient(self.sendgrid_api_key)
-            response = sg.send(self.message)
+            SGClient = SendGridAPIClient(self.sendgrid_api_key)
+            response = SGClient.send(self.message)
             logger.info(f"{self.subject} sent to {self.email}. Status code: {response.status_code}")
         except Exception as e:
             error_message = f"Failed to send {self.subject} to {self.email}: {str(e)}"
