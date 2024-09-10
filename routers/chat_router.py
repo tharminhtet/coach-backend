@@ -89,7 +89,7 @@ async def chat(
     try:
         chat_id = request.chat_id or str(uuid.uuid4())
         user_id = await get_user_id_internal(current_user["email"])
-        chat_history = _get_chat_history(chat_id)
+        chat_history = _get_chat_history(chat_id, False)
         user_message = {"role": "user", "content": request.message}
 
         client = OpenAI()
@@ -113,11 +113,12 @@ async def chat(
         else:
             raise HTTPException(status_code=400, detail="Invalid chat purpose")
 
-        ai_response_stream = await assistant.chat(
+        ai_response_stream, system_message = await assistant.chat(
             chat_history, request.message, purpose_data
         )
 
         def generate():
+            nonlocal chat_history  
             full_response = None
             for extraction in ai_response_stream:
                 full_response = extraction
@@ -135,6 +136,8 @@ async def chat(
 
             if full_response:
                 ai_message = {"role": "assistant", "content": full_response.response}
+                if system_message:
+                    chat_history = [{"role": "system", "content": system_message}]
                 chat_history.extend([user_message, ai_message])
                 _save_chat_messages(user_id, chat_id, chat_history, request.purpose, request.purpose_data)
 
@@ -155,7 +158,7 @@ async def get_chat_history(chat_id: str):
     Retrieve chat history for a given chat ID.
     """
     try:
-        chat_history = _get_chat_history(chat_id)
+        chat_history = _get_chat_history(chat_id, True)
         return chat_history
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -317,7 +320,7 @@ def _save_chat_messages(
         upsert=True
     )
 
-def _get_chat_history(chat_id: str) -> list[dict[str, str]]:
+def _get_chat_history(chat_id: str, is_remove_system_message: bool) -> list[dict[str, str]]:
     """
     Retrieve chat history from the database.
     Cleanup from chat history.
@@ -325,19 +328,31 @@ def _get_chat_history(chat_id: str) -> list[dict[str, str]]:
     """
     db_operations = DbOperations("chat-history")
     chat_document = db_operations.collection.find_one({"chat_id": chat_id})
+    messages = []
     if chat_document and "messages" in chat_document:
+<<<<<<< HEAD
         messages = _cleanup_chat_history(chat_document)
+=======
+        messages = chat_document["messages"]
+        if is_remove_system_message:
+            messages = _cleanup_chat_history(chat_document)
+>>>>>>> main
         return [
             {"role": m["role"], "content": m["content"]}
             for m in messages
         ]
+<<<<<<< HEAD
     return []
+=======
+    return messages
+>>>>>>> main
 
 def _cleanup_chat_history(chat_document: dict):
     """
     Always remove the first message if it's a system message.
     Remove the first user message if the purpose is "workout_journal".
     """
+<<<<<<< HEAD
     if chat_document and "messages" in chat_document:
         messages = chat_document["messages"]
         
@@ -352,3 +367,18 @@ def _cleanup_chat_history(chat_document: dict):
                 messages.pop(first_user_index)
 
     return messages
+=======
+    messages = chat_document.get("messages", [])
+    
+    # Always remove the first message if it's a system message
+    if messages and messages[0]["role"] == "system":
+        messages.pop(0)
+    
+    # Remove the first user message if the purpose is "workout_journal"
+    if chat_document.get("purpose") == ChatPurpose.WORKOUT_JOURNAL.value:
+        first_user_index = next((i for i, m in enumerate(messages) if m["role"] == "user"), None)
+        if first_user_index is not None:
+            messages.pop(first_user_index)
+
+    return messages
+>>>>>>> main
