@@ -330,44 +330,20 @@ def _get_chat_history(chat_id: str, is_remove_system_message: bool) -> list[dict
     chat_document = db_operations.collection.find_one({"chat_id": chat_id})
     messages = []
     if chat_document and "messages" in chat_document:
-<<<<<<< HEAD
-        messages = _cleanup_chat_history(chat_document)
-=======
         messages = chat_document["messages"]
         if is_remove_system_message:
             messages = _cleanup_chat_history(chat_document)
->>>>>>> main
         return [
             {"role": m["role"], "content": m["content"]}
             for m in messages
         ]
-<<<<<<< HEAD
-    return []
-=======
     return messages
->>>>>>> main
 
 def _cleanup_chat_history(chat_document: dict):
     """
     Always remove the first message if it's a system message.
     Remove the first user message if the purpose is "workout_journal".
     """
-<<<<<<< HEAD
-    if chat_document and "messages" in chat_document:
-        messages = chat_document["messages"]
-        
-        # Always remove the first message if it's a system message
-        if messages and messages[0]["role"] == "system":
-            messages.pop(0)
-        
-        # Remove the first user message if the purpose is "workout_journal"
-        if chat_document.get("purpose") == ChatPurpose.WORKOUT_JOURNAL.value:
-            first_user_index = next((i for i, m in enumerate(messages) if m["role"] == "user"), None)
-            if first_user_index is not None:
-                messages.pop(first_user_index)
-
-    return messages
-=======
     messages = chat_document.get("messages", [])
     
     # Always remove the first message if it's a system message
@@ -381,4 +357,3 @@ def _cleanup_chat_history(chat_document: dict):
             messages.pop(first_user_index)
 
     return messages
->>>>>>> main
