@@ -124,8 +124,6 @@ async def generate_quick_workout_plan(
         logger.error(error_message)
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=400, detail=error_message)
-    
-    # return current_week_workout
 
     # Check if a workout already exists for the given date
     existing_workout = next((workout for workout in current_week_workout["workouts"] if workout["date"] == date), None)
@@ -134,8 +132,6 @@ async def generate_quick_workout_plan(
         logger.error(error_message)
         raise HTTPException(status_code=400, detail=error_message)
     
-    # return existing_workout
-    
     user_id = await get_user_id_internal(current_user["email"])
     # retrieve user details from db
     user_data = gph._extract_user_data(user_id=user_id, chat_id=None)
@@ -143,8 +139,6 @@ async def generate_quick_workout_plan(
     # retrieve all previous weeks of user fitness plans
     current_date = datetime.strptime(date, "%Y-%m-%d")
     old_weekly_training_plans = gph._get_all_old_weekly_training_plans(user_id=user_id, year = str(current_date.year))
-
-    # return old_weekly_training_plans
 
     client = OpenAI()
     with open("prompts/generate_quick_workout_plan_system_message.txt", "r") as file:
@@ -171,7 +165,6 @@ async def generate_quick_workout_plan(
     weekly_plan_dboperations = DbOperations("weekly-training-plans")
 
     try:
-        # Append the new workout to the workouts list
         update_query = {
             "$push": {
                 "workouts": quick_workout
