@@ -385,3 +385,18 @@ def update_weekly_summary(user_id: str):
                 logger.error(error_message)
                 logger.error(traceback.format_exc())
                 raise HTTPException(status_code=500, detail=error_message)
+
+def _update_or_insert_workout_for_specific_date(week_id: str, date: str, new_workout: dict):
+    weekly_plan_dboperations = DbOperations("weekly-training-plans")
+    query = {"week_id": week_id, "workouts.date": date}
+    
+    existing_workout = weekly_plan_dboperations.read_one_from_mongodb(query)
+    
+    if existing_workout:
+        # Update existing workout
+        update_query = {"$set": {"workouts.$": new_workout}}
+        weekly_plan_dboperations.update_from_mongodb(query, update_query)
+    else:
+        # Insert new workout
+        update_query = {"$push": {"workouts": new_workout}}
+        weekly_plan_dboperations.update_from_mongodb({"week_id": week_id}, update_query)
