@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from typing import List, Union
+from typing import List, Union, Dict, Any
 from datetime import datetime
 from db.db_operations import DbOperations
 from authorization import user_or_admin_required
@@ -305,6 +305,53 @@ async def delete_user_profile(current_user: dict = Depends(user_or_admin_require
     }
 
 
+@router.get("/verifyUserDetails")
+async def verify_user_details(current_user: dict = Depends(user_or_admin_required)):
+    """
+    Verify if all required fields in the user-details collection are populated.
+    """
+    user_id = await get_user_id_internal(current_user["email"])
+    user_dboperations = DbOperations("user-details")
+
+    try:
+        user_details = user_dboperations.read_one_from_mongodb({"user_id": user_id})
+        if not user_details:
+            raise HTTPException(status_code=404, detail="User details not found")
+
+        required_fields = [
+            "age",
+            "gender",
+            "stats.availableDays",
+            "stats.preferredDays",
+            "stats.availableEquipments",
+            "stats.fitnessLevel",
+            "stats.bodyWeight",
+            "stats.height",
+            "stats.goal",
+        ]
+
+        missing_fields = [
+            field
+            for field in required_fields
+            if not _get_nested_value(user_details, field)
+        ]
+
+        return {
+            "isComplete": len(missing_fields) == 0,
+            "missing_fields": missing_fields if missing_fields else None,
+        }
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        error_message = (
+            f'Error verifying user details for {current_user["email"]}: {str(e)}'
+        )
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=error_message)
+
+
 async def get_user_id_internal(username: str):
     user_profile = await get_user_id(username)
     return user_profile["user_id"]
@@ -392,3 +439,16 @@ def _validate_user_details(user_id: str):
         return {"status": "error", "message": error_message}, 500
 
     return user_details is not None
+
+
+def _get_nested_value(data: Dict[str, Any], key: str) -> Any:
+    """
+    Get a nested value from a dictionary using a dot-separated key.
+    """
+    keys = key.split(".")
+    for k in keys:
+        if isinstance(data, dict):
+            data = data.get(k)
+        else:
+            return None
+    return data
