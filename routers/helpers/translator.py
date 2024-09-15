@@ -67,8 +67,9 @@ class Translator:
                     file=audio_file,
                 )
             # Post-processing for any mis-spelling.
-            corrected_text = self._post_process(translation.text)
-            return corrected_text
+            # corrected_text = self._post_process(translation.text)
+            # return corrected_text
+            return translation.text
         except Exception as e:
             error_message = f"Translation failed: {str(e)}"
             logger.error(error_message)
@@ -97,8 +98,9 @@ class Translator:
                     file=audio_file
                 )
             # Post-processing for any mis-spelling.
-            corrected_text = self._post_process(transcription.text)
-            return corrected_text
+            # corrected_text = self._post_process(transcription.text)
+            # return corrected_text
+            return transcription.text
         except Exception as e:
             error_message = f"Transcription failed: {str(e)}"
             logger.error(error_message)
