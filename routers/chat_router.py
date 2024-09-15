@@ -83,7 +83,7 @@ class ChatResponse(BaseModel):
     complete: bool
 
 
-# For testing purpose. Can be remove later if not used.
+# For testing purpose. Can be removed later if not used.
 @router.post("/translate")
 async def translate_audio(audio: UploadFile = File(...)):
     translator = Translator(audio)
