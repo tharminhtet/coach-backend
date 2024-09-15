@@ -52,8 +52,7 @@ class Translator:
             with tempfile.NamedTemporaryFile(delete=False, suffix=self.file_extension) as temp_file:
                 temp_file.write(file_content)
                 temp_file_path = temp_file.name
-
-            # Use the temporary file for translation
+                
             with open(temp_file_path, 'rb') as audio_file:
                 translation = self.client.audio.translations.create(
                     model="whisper-1",
