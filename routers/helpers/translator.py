@@ -5,6 +5,7 @@ import os
 import logging
 import traceback
 import tempfile
+import contextlib
 
 # Load .env file
 load_dotenv()
@@ -24,6 +25,9 @@ class Translator:
         self.validate_audio()
 
     def validate_audio(self):
+        """
+        Check if file is valid type and file size is less than 25 MB.
+        """
         # Check file type
         if self.file_extension[1:] not in self.allowed_types:
             error_message = f"Unsupported file type. Allowed types are: {', '.join(self.allowed_types)}"
@@ -46,6 +50,9 @@ class Translator:
             raise HTTPException(status_code=400, detail=error_message)
 
     def translate(self):
+        """
+        Translate given audio to text and post processing with AI for misspell.
+        """
         try:
             file_content = self.audio.file.read()
             # Convert to a temporary file for OpenAI 
@@ -58,10 +65,6 @@ class Translator:
                     model="whisper-1",
                     file=audio_file
                 )
-
-            # Remove the temporary file
-            os.unlink(temp_file_path)
-
             # Post-processing for any mis-spelling.
             corrected_text = self._post_process(translation.text)
             return corrected_text
@@ -70,9 +73,16 @@ class Translator:
             logger.error(error_message)
             logger.error(traceback.format_exc())
             raise HTTPException(status_code=500, detail=error_message)
+        finally:
+            # Ensure temporary file deletion
+            if temp_file_path and os.path.exists(temp_file_path):
+                os.unlink(temp_file_path)
 
     def _post_process(self, text):
-        with open('routers/helpers/prompts/correct_translation_mispelling_system_message.txt', 'r') as file:
+        """
+        Correct given text for any misspell or grammatical mistake and remove unnecessary characters.
+        """
+        with open('routers/helpers/prompts/correct_translation_system_message.txt', 'r') as file:
             system_message = file.read().strip()
             system_message = system_message.replace("{translated_text}", text)
         user_message = f"Please correct any spelling errors in the given text."
