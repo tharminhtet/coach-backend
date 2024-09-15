@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, File, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Union
@@ -21,8 +21,12 @@ import traceback
 import json
 from enum import Enum
 from routers.user_profile import get_user_id_internal
+from .helpers.translator import Translator
 
-router = APIRouter()
+router = APIRouter(
+    prefix='/chat',
+    tags=['chat']
+)
 logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)
 
@@ -78,6 +82,13 @@ class ChatResponse(BaseModel):
     question: Optional[Dict] = None
     complete: bool
 
+
+# For testing purpose. Can be remove later if not used.
+@router.post("/translate")
+async def translate_audio(audio: UploadFile = File(...)):
+    translator = Translator(audio)
+    translated_text = translator.translate()
+    return {"translated_text": translated_text}, 200
 
 @router.post("/chat", response_class=StreamingResponse)
 async def chat(
