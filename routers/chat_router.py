@@ -90,6 +90,13 @@ async def translate_audio(audio: UploadFile = File(...)):
     translated_text = translator.translate()
     return {"translated_text": translated_text}, 200
 
+# For testing purpose. Can be removed later if not used.
+@router.post("/transcribe")
+async def transcribe_audio(audio: UploadFile = File(...)):
+    translator = Translator(audio)
+    transcribed_text = translator.transcribe()
+    return {"transcribed_text": transcribed_text}, 200
+
 @router.post("/chat", response_class=StreamingResponse)
 async def chat(
     request: ChatRequest, current_user: dict = Depends(user_or_admin_required)
