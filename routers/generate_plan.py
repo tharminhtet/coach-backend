@@ -120,7 +120,7 @@ async def generate_quick_workout_plan(
     # retrieve the workout plan for the current week
     current_week_workout = await get_weekly_training_plan_api(date, current_user)
     if not current_week_workout:
-        error_message = "Quick workout session cannot be generated before the current weekly workout plan is generated."
+        error_message = "Quick workout session cannot be generated before the weekly workout plan is generated."
         logger.error(error_message)
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=400, detail=error_message)
@@ -137,7 +137,7 @@ async def generate_quick_workout_plan(
     user_data = gph._extract_user_data(user_id=user_id, chat_id=None)
 
     # retrieve all previous weeks of user fitness plans
-    current_date = datetime.strptime(date, "%Y-%m-%d")
+    current_date = datetime.strptime(date, "%Y-%m-%d").date().isoformat()
     old_weekly_training_plans = gph._get_all_old_weekly_training_plans(user_id=user_id, year = str(current_date.year))
 
     client = OpenAI()
@@ -145,7 +145,7 @@ async def generate_quick_workout_plan(
         system_message = file.read()
         system_message = system_message.replace("{user_data}", json.dumps(user_data))
         system_message = system_message.replace("{current_week_workout}", json.dumps(current_week_workout))
-        system_message = system_message.replace("{current_date}", json.dumps(current_date.isoformat()))
+        system_message = system_message.replace("{current_date}", json.dumps(current_date))
         system_message = system_message.replace("{old_training_plans}", json.dumps(old_weekly_training_plans))
     user_message = "Create a workout plan for a current date based on the given information."
 
@@ -180,6 +180,55 @@ async def generate_quick_workout_plan(
 
     except Exception as e:
         error_message = f"Error updating weekly training plan with quick workout: {str(e)}"
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=error_message)
+
+
+@router.post("/quickLogWorkout")
+async def log_workout(
+    date: str, chat_id: str, current_user: dict = Depends(user_or_admin_required)
+):
+    """
+    Add or update a workout based on chat_id for a given date.
+    """
+    # retrieve the workout plan for the current week
+    current_week_workout = await get_weekly_training_plan_api(date, current_user)
+    if not current_week_workout:
+        error_message = "Logging workout cannot be done before generating a weekly workout."
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=400, detail=error_message)
+
+    current_date = datetime.strptime(date, "%Y-%m-%d").date().isoformat()
+    chat_history = gph._get_chat_history(chat_id)
+
+    client = OpenAI()
+    with open("prompts/user_specified_workout_log.txt", "r") as file:
+        system_message = file.read()
+        system_message = system_message.replace("{current_date}", json.dumps(current_date))
+        system_message = system_message.replace("{chat_history}", json.dumps(chat_history))
+    user_message = "Recreate a workout plan based on given information for logging purpose."
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        response_format={"type": "json_object"},
+        messages=[
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": user_message},
+        ],
+    )
+    
+    workout_log = json.loads(response.choices[0].message.content)
+    logger.info("Quick workout log is successfully generated.")
+
+    week_id = current_week_workout["week_id"]
+    try:
+        gph._update_or_insert_workout_for_specific_date(week_id, current_date, workout_log)
+        logger.info(f"Workout log for date: {date} successfully added/updated in the weekly plan.")
+        return workout_log
+    except Exception as e:
+        error_message = f"Error updating weekly training plan with workout log: {str(e)}"
         logger.error(error_message)
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=error_message)
