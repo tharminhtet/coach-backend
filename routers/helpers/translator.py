@@ -113,7 +113,7 @@ class Translator:
         """
         Correct given text for any misspell or grammatical mistake and remove unnecessary characters.
         """
-        with open('routers/helpers/prompts/correct_translation_system_message.txt', 'r') as file:
+        with open('routers/helpers/prompts/correct_speech_to_text_system_message.txt', 'r') as file:
             system_message = file.read().strip()
             system_message = system_message.replace("{translated_text}", text)
         user_message = f"Please correct any spelling errors in the given text."
