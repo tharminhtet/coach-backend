@@ -53,6 +53,7 @@ class Translator:
         """
         Translate given audio to text and post processing with AI for misspell.
         """
+        temp_file_path = None
         try:
             file_content = self.audio.file.read()
             # Convert to a temporary file for OpenAI 
@@ -74,8 +75,8 @@ class Translator:
             logger.error(traceback.format_exc())
             raise HTTPException(status_code=500, detail=error_message)
         finally:
-            # Ensure temporary file deletion
-            if temp_file_path and os.path.exists(temp_file_path):
+            # Ensure the file is deleted even if an exception occurs
+            with contextlib.suppress(FileNotFoundError):
                 os.unlink(temp_file_path)
 
     def _post_process(self, text):
