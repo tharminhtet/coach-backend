@@ -166,15 +166,15 @@ async def generate_quick_workout_plan(
     weekly_plan_dboperations = DbOperations("weekly-training-plans")
 
     try:
-        # update_query = {
-        #     "$push": {
-        #         "workouts": quick_workout
-        #     }
-        # }
-        # weekly_plan_dboperations.update_from_mongodb(
-        #     {"week_id": week_id},
-        #     update_query
-        # )
+        update_query = {
+            "$push": {
+                "workouts": quick_workout
+            }
+        }
+        weekly_plan_dboperations.update_from_mongodb(
+            {"week_id": week_id},
+            update_query
+        )
 
         logger.info(f"Quick workout for date {date} successfully added to the weekly plan.")
         return quick_workout
