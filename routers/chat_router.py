@@ -23,10 +23,7 @@ from enum import Enum
 from routers.user_profile import get_user_id_internal
 from .helpers.translator import Translator
 
-router = APIRouter(
-    prefix='/chat',
-    tags=['chat']
-)
+router = APIRouter(prefix="/chat", tags=["chat"])
 logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)
 
@@ -88,14 +85,16 @@ class ChatResponse(BaseModel):
 async def translate_audio(audio: UploadFile = File(...)):
     translator = Translator(audio)
     translated_text = translator.translate()
-    return {"translated_text": translated_text}, 200
+    return {"translated_text": translated_text}
+
 
 # For testing purpose. Can be removed later if not used.
 @router.post("/transcribe")
 async def transcribe_audio(audio: UploadFile = File(...)):
     translator = Translator(audio)
     transcribed_text = translator.transcribe()
-    return {"transcribed_text": transcribed_text}, 200
+    return {"transcribed_text": transcribed_text}
+
 
 @router.post("/chat", response_class=StreamingResponse)
 async def chat(
@@ -136,7 +135,7 @@ async def chat(
         )
 
         def generate():
-            nonlocal chat_history  
+            nonlocal chat_history
             full_response = None
             for extraction in ai_response_stream:
                 full_response = extraction
@@ -157,7 +156,13 @@ async def chat(
                 if system_message:
                     chat_history = [{"role": "system", "content": system_message}]
                 chat_history.extend([user_message, ai_message])
-                _save_chat_messages(user_id, chat_id, chat_history, request.purpose, request.purpose_data)
+                _save_chat_messages(
+                    user_id,
+                    chat_id,
+                    chat_history,
+                    request.purpose,
+                    request.purpose_data,
+                )
 
         return StreamingResponse(generate(), media_type="text/event-stream")
     except Exception as e:
@@ -186,8 +191,9 @@ async def get_chat_history(chat_id: str):
 async def get_today_chat_history(
     date: str = Query(..., description="Start date in ISO format (YYYY-MM-DD)"),
     offset: int = Query(0, ge=0),
-    limit: int = Query(10, ge=1, le=100), 
-    current_user: dict = Depends(user_or_admin_required)):
+    limit: int = Query(10, ge=1, le=100),
+    current_user: dict = Depends(user_or_admin_required),
+):
     """
     Returns a JSON response with date as key and lists of chat ids as values, sorted by time (most recent first)
     """
@@ -202,7 +208,10 @@ async def get_today_chat_history(
     date_start = datetime.combine(date_datetime.date(), time.min)
     date_end = datetime.combine(date_datetime.date(), time.max)
 
-    return _get_chat_ids_from_date_range_with_pagination(user_id, date_start, date_end, offset, limit)
+    return _get_chat_ids_from_date_range_with_pagination(
+        user_id, date_start, date_end, offset, limit
+    )
+
 
 @router.get("/getChatHistoryByDateRange", response_model=dict)
 async def get_chat_history_by_date_range(
@@ -210,7 +219,7 @@ async def get_chat_history_by_date_range(
     end_date: str = Query(..., description="End date in ISO format (YYYY-MM-DD)"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
     limit: int = Query(10, ge=1, le=100, description="Limit for pagination"),
-    current_user: dict = Depends(user_or_admin_required)
+    current_user: dict = Depends(user_or_admin_required),
 ):
     """
     Returns a JSON response with dates as keys and lists of chat ids as values
@@ -229,7 +238,9 @@ async def get_chat_history_by_date_range(
 
     start_datetime = datetime.combine(start_datetime.date(), time.min)
     end_datetime = datetime.combine(end_datetime.date(), time.max)
-    return _get_chat_ids_from_date_range_with_pagination(user_id, start_datetime, end_datetime, offset, limit)
+    return _get_chat_ids_from_date_range_with_pagination(
+        user_id, start_datetime, end_datetime, offset, limit
+    )
 
 
 @router.get("/getChatHistoryByYearMonth", response_model=List[str])
@@ -238,7 +249,7 @@ async def get_chat_history_by_year_month(
     month: Optional[int] = Query(None, description="Month for chat history (optional)"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
     limit: int = Query(10, ge=1, le=100, description="Limit for pagination"),
-    current_user: dict = Depends(user_or_admin_required)
+    current_user: dict = Depends(user_or_admin_required),
 ):
     """
     Returns a list of chat ids for the given user based on the specified year and month,
@@ -262,10 +273,12 @@ async def get_chat_history_by_year_month(
         chat_history = _get_chat_ids_from_date_range_with_pagination(
             user_id, start_date, end_date, offset, limit
         )
-        
+
         # Flatten the dictionary into a list of chat IDs
-        chat_ids = [chat_id for date_chats in chat_history.values() for chat_id in date_chats]
-        
+        chat_ids = [
+            chat_id for date_chats in chat_history.values() for chat_id in date_chats
+        ]
+
         return chat_ids
     except ValueError as ve:
         error_message = f"Invalid date: {str(ve)}"
@@ -279,11 +292,7 @@ async def get_chat_history_by_year_month(
 
 
 def _get_chat_ids_from_date_range_with_pagination(
-    user_id: str, 
-    start_time: datetime, 
-    end_time: datetime, 
-    offset: int, 
-    limit: int
+    user_id: str, start_time: datetime, end_time: datetime, offset: int, limit: int
 ) -> Dict[str, List[str]]:
     """
     Retrieve a dictionary of dates and their corresponding chat_ids based on start date and end date
@@ -291,34 +300,48 @@ def _get_chat_ids_from_date_range_with_pagination(
     """
     db_operations = DbOperations("chat-history")
     try:
-        chats = db_operations.collection.find(
-            {
-                "user_id": user_id,
-                "time": {"$gte": start_time.isoformat(), "$lte": end_time.isoformat()}
-            },
-            {"chat_id": 1, "time": 1}
-        ).sort("time", -1).skip(offset).limit(limit)
-        
+        chats = (
+            db_operations.collection.find(
+                {
+                    "user_id": user_id,
+                    "time": {
+                        "$gte": start_time.isoformat(),
+                        "$lte": end_time.isoformat(),
+                    },
+                },
+                {"chat_id": 1, "time": 1},
+            )
+            .sort("time", -1)
+            .skip(offset)
+            .limit(limit)
+        )
+
         chat_history = {}
         for chat in chats:
             date = chat["time"].split("T")[0]  # Extract date from ISO format
             if date not in chat_history:
                 chat_history[date] = []
             chat_history[date].append(chat["chat_id"])
-        
+
         return chat_history
     except Exception as e:
-        error_message = f"Error retrieving chat history for user_id: {user_id} with error: {str(e)}"
+        error_message = (
+            f"Error retrieving chat history for user_id: {user_id} with error: {str(e)}"
+        )
         logger.error(error_message)
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=error_message)
 
+
 def _save_chat_messages(
-    user_id: str, 
-    chat_id: str, 
-    messages: List[Dict[str, str]], 
-    purpose: ChatPurpose, 
-    purpose_content: Optional[Union[OnboardingChatRequest, WorkoutJournalChatRequest, WorkoutGuideChatRequest]]):
+    user_id: str,
+    chat_id: str,
+    messages: List[Dict[str, str]],
+    purpose: ChatPurpose,
+    purpose_content: Optional[
+        Union[OnboardingChatRequest, WorkoutJournalChatRequest, WorkoutGuideChatRequest]
+    ],
+):
     """
     Save chat messages to the database.
     """
@@ -332,13 +355,16 @@ def _save_chat_messages(
                 "time": datetime.now().isoformat(),
                 "purpose": purpose.value,
                 "purpose_content": purpose_content_dict,
-                "messages": messages
+                "messages": messages,
             }
         },
-        upsert=True
+        upsert=True,
     )
 
-def _get_chat_history(chat_id: str, is_remove_system_message: bool) -> list[dict[str, str]]:
+
+def _get_chat_history(
+    chat_id: str, is_remove_system_message: bool
+) -> list[dict[str, str]]:
     """
     Retrieve chat history from the database.
     Cleanup from chat history.
@@ -351,11 +377,9 @@ def _get_chat_history(chat_id: str, is_remove_system_message: bool) -> list[dict
         messages = chat_document["messages"]
         if is_remove_system_message:
             messages = _cleanup_chat_history(chat_document)
-        return [
-            {"role": m["role"], "content": m["content"]}
-            for m in messages
-        ]
+        return [{"role": m["role"], "content": m["content"]} for m in messages]
     return messages
+
 
 def _cleanup_chat_history(chat_document: dict):
     """
@@ -363,14 +387,16 @@ def _cleanup_chat_history(chat_document: dict):
     Remove the first user message if the purpose is "workout_journal".
     """
     messages = chat_document.get("messages", [])
-    
+
     # Always remove the first message if it's a system message
     if messages and messages[0]["role"] == "system":
         messages.pop(0)
-    
+
     # Remove the first user message if the purpose is "workout_journal"
     if chat_document.get("purpose") == ChatPurpose.WORKOUT_JOURNAL.value:
-        first_user_index = next((i for i, m in enumerate(messages) if m["role"] == "user"), None)
+        first_user_index = next(
+            (i for i, m in enumerate(messages) if m["role"] == "user"), None
+        )
         if first_user_index is not None:
             messages.pop(first_user_index)
 
