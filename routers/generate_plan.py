@@ -73,7 +73,7 @@ async def generateWeeklyPlan(
             "{start_of_week}", json.dumps(start_of_week)
         )
         system_message = system_message.replace(
-            "{current_day}", json.dumps(current_day)
+            "{current_day}", current_day
         )
         system_message = system_message.replace(
             "{old_training_plans}", json.dumps(old_weekly_training_plans)
@@ -137,15 +137,16 @@ async def generate_quick_workout_plan(
     user_data = gph._extract_user_data(user_id=user_id, chat_id=None)
 
     # retrieve all previous weeks of user fitness plans
-    current_date = datetime.strptime(date, "%Y-%m-%d").date().isoformat()
-    old_weekly_training_plans = gph._get_all_old_weekly_training_plans(user_id=user_id, year = str(current_date.year))
+    current_date = datetime.strptime(date, "%Y-%m-%d").date()
+    
+    old_weekly_training_plans = gph._get_all_old_weekly_training_plans(user_id=user_id, year=str(current_date.year))
 
     client = OpenAI()
     with open("prompts/generate_quick_workout_plan_system_message.txt", "r") as file:
         system_message = file.read()
         system_message = system_message.replace("{user_data}", json.dumps(user_data))
         system_message = system_message.replace("{current_week_workout}", json.dumps(current_week_workout))
-        system_message = system_message.replace("{current_date}", json.dumps(current_date))
+        system_message = system_message.replace("{current_date}", current_date.isoformat())
         system_message = system_message.replace("{old_training_plans}", json.dumps(old_weekly_training_plans))
     user_message = "Create a workout plan for a current date based on the given information."
 
@@ -165,15 +166,15 @@ async def generate_quick_workout_plan(
     weekly_plan_dboperations = DbOperations("weekly-training-plans")
 
     try:
-        update_query = {
-            "$push": {
-                "workouts": quick_workout
-            }
-        }
-        weekly_plan_dboperations.update_from_mongodb(
-            {"week_id": week_id},
-            update_query
-        )
+        # update_query = {
+        #     "$push": {
+        #         "workouts": quick_workout
+        #     }
+        # }
+        # weekly_plan_dboperations.update_from_mongodb(
+        #     {"week_id": week_id},
+        #     update_query
+        # )
 
         logger.info(f"Quick workout for date {date} successfully added to the weekly plan.")
         return quick_workout
