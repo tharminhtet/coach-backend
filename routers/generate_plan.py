@@ -207,6 +207,7 @@ async def log_workout(
     client = OpenAI()
     with open("prompts/user_specified_workout_log.txt", "r") as file:
         system_message = file.read()
+        system_message = system_message.replace("{current_date}", json.dumps(current_date))
         system_message = system_message.replace("{chat_history}", json.dumps(chat_history))
     user_message = "Recreate a workout plan based on given information for logging purpose."
 
