@@ -63,12 +63,6 @@ class WorkoutGuideChatRequest(BaseModel):
         ..., description="Date of the workout guide being asked."
     )
 
-# class WorkoutLogChatRequest(BaseModel):
-#     workout_date: datetime = Field(
-#         ..., description="Date of the workout being logged."
-#     )
-#     user_name: str = Field(..., description="User name for onboarding")
-
 
 class ChatRequest(BaseChatRequest):
     purpose_data: Optional[
