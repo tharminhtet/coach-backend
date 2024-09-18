@@ -12,7 +12,6 @@ import uuid
 import logging
 import traceback
 from routers.user_profile import get_user_id_internal
-from routers.chat_router import get_chat_history
 from services.onboarding_assistant import OnboardingAssistant
 from services.workout_journal_assistant import WorkoutJournalAssistant
 from .helpers import generate_plan_helpers as gph
@@ -203,7 +202,7 @@ async def log_workout(
         raise HTTPException(status_code=400, detail=error_message)
 
     current_date = datetime.strptime(date, "%Y-%m-%d").date().isoformat()
-    chat_history = get_chat_history(chat_id, True)
+    chat_history = gph._get_chat_history(chat_id, True)
 
     client = OpenAI()
     with open("prompts/user_specified_workout_log.txt", "r") as file:
