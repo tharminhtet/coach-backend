@@ -12,6 +12,7 @@ import uuid
 import logging
 import traceback
 from routers.user_profile import get_user_id_internal
+from routers.chat_router import get_chat_history
 from services.onboarding_assistant import OnboardingAssistant
 from services.workout_journal_assistant import WorkoutJournalAssistant
 from .helpers import generate_plan_helpers as gph
@@ -188,7 +189,7 @@ async def generate_quick_workout_plan(
 
 @router.post("/quickLogWorkout")
 async def log_workout(
-    date: str, chat_id: str, current_user: dict = Depends(user_or_admin_required)
+    date: str, chat_id: str, shouldReplace: bool, current_user: dict = Depends(user_or_admin_required)
 ):
     """
     Add or update a workout based on chat_id for a given date.
@@ -202,12 +203,11 @@ async def log_workout(
         raise HTTPException(status_code=400, detail=error_message)
 
     current_date = datetime.strptime(date, "%Y-%m-%d").date().isoformat()
-    chat_history = gph._get_chat_history(chat_id)
+    chat_history = get_chat_history(chat_id, True)
 
     client = OpenAI()
     with open("prompts/user_specified_workout_log.txt", "r") as file:
         system_message = file.read()
-        system_message = system_message.replace("{current_date}", json.dumps(current_date))
         system_message = system_message.replace("{chat_history}", json.dumps(chat_history))
     user_message = "Recreate a workout plan based on given information for logging purpose."
 
@@ -225,7 +225,7 @@ async def log_workout(
 
     week_id = current_week_workout["week_id"]
     try:
-        gph._update_or_insert_workout_for_specific_date(week_id, current_date, workout_log)
+        gph._update_or_insert_workout_for_specific_date(week_id, current_date, workout_log, shouldReplace)
         logger.info(f"Workout log for date: {date} successfully added/updated in the weekly plan.")
         return workout_log
     except Exception as e:
@@ -317,7 +317,7 @@ async def update_daily_summary(
     Based on weekly_training_plan and chat_history between user and assistant.
     Summarize the workout and update the "summary" field in the weekly_training_plan document of the given date.
     """
-    chat_history = gph._get_chat_history(chat_id)
+    chat_history = gph._get_chat_history(chat_id, True)
     client = OpenAI()
     assistant = WorkoutJournalAssistant(client)
     checkin_summary = await assistant.summarize(
@@ -360,7 +360,7 @@ async def update_workout(
         user_details = gph._extract_user_data(user_id=user_id)
 
         # Get chat history and format chat history
-        chat_history = gph._get_chat_history(chat_id)
+        chat_history = gph._get_chat_history(chat_id, True)
         formatted_chat_history = ""
         for message in chat_history:
             formatted_chat_history += f"{message['role']} : {message['content']}\n"

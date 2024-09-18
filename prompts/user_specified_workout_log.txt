@@ -15,9 +15,9 @@ For each workout:
 name is the type of workout that user did.
 description is the details of workout such as NUMERICAL weights, reps, sets, duration of workout, type of equipments and rest periods if provided in chat_history.
 Always output "Users's requested workout, not related to weekly plan." for coach_note.
-status should be "Completed" with additional details if user has mentioned any more details about the workout such as struggles or comments, etc.
+status should be "Completed" with additional details if user has mentioned any more details about the workout such as struggles or any comment about the user's enjoyment of the workout, etc.
 reasoning should be kept empty.
-summary is the summary of all workouts that user described from chat_history and keep it short and precise.
+summary should be kept emtpy.
 
 
 OUTPUT FORMAT:
