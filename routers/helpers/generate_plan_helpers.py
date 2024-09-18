@@ -35,7 +35,7 @@ def _extract_user_data(
     user_details_dboperations = DbOperations("user-details")
     if chat_id:
         # Onboard first-time user. Summarize assessment conversation.
-        chat_history = _get_chat_history(chat_id)
+        chat_history = _get_chat_history(chat_id, True)
         client = OpenAI()
         assistant = OnboardingAssistant(client)
         user_data = assistant.summarize(chat_history)
