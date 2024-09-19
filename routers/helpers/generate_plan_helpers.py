@@ -6,6 +6,7 @@ import json
 import logging
 import traceback
 from services.onboarding_assistant import OnboardingAssistant
+from enums import ChatPurpose
 from openai import OpenAI
 
 logger = logging.getLogger(__name__)
@@ -34,7 +35,7 @@ def _extract_user_data(
     user_details_dboperations = DbOperations("user-details")
     if chat_id:
         # Onboard first-time user. Summarize assessment conversation.
-        chat_history = _get_chat_history(chat_id)
+        chat_history = _get_chat_history(chat_id, True)
         client = OpenAI()
         assistant = OnboardingAssistant(client)
         user_data = assistant.summarize(chat_history)
@@ -152,18 +153,45 @@ def _update_overall_training_plan(
     )
 
 
-def _get_chat_history(chat_id: str) -> list[dict[str, str]]:
+def _get_chat_history(
+    chat_id: str, is_remove_system_message: bool
+) -> list[dict[str, str]]:
     """
     Retrieve chat history from the database.
+    Cleanup from chat history.
+    Return empty list if chat_id is not found.
     """
     db_operations = DbOperations("chat-history")
     chat_document = db_operations.collection.find_one({"chat_id": chat_id})
+    messages = []
     if chat_document and "messages" in chat_document:
-        return [
-            {"role": m["role"], "content": m["content"]}
-            for m in chat_document["messages"]
-        ]
-    return []
+        messages = chat_document["messages"]
+        if is_remove_system_message:
+            messages = _cleanup_chat_history(chat_document)
+        return [{"role": m["role"], "content": m["content"]} for m in messages]
+    return messages
+
+
+def _cleanup_chat_history(chat_document: dict):
+    """
+    Always remove the first message if it's a system message.
+    Remove the first user message if the purpose is "workout_journal".
+    """
+    messages = chat_document.get("messages", [])
+
+    # Always remove the first message if it's a system message
+    if messages and messages[0]["role"] == "system":
+        messages.pop(0)
+
+    # Remove the first user message if the purpose is "workout_journal"
+    if chat_document.get("purpose") == ChatPurpose.WORKOUT_JOURNAL.value:
+        first_user_index = next(
+            (i for i, m in enumerate(messages) if m["role"] == "user"), None
+        )
+        if first_user_index is not None:
+            messages.pop(first_user_index)
+
+    return messages
 
 
 def _get_daily_training_plan(week_id: str, date: str):
@@ -386,15 +414,25 @@ def update_weekly_summary(user_id: str):
                 logger.error(traceback.format_exc())
                 raise HTTPException(status_code=500, detail=error_message)
 
-def _update_or_insert_workout_for_specific_date(week_id: str, date: str, new_workout: dict):
+def _update_or_insert_workout_for_specific_date(week_id: str, date: str, new_workout: dict, shouldReplace: bool):
     weekly_plan_dboperations = DbOperations("weekly-training-plans")
     query = {"week_id": week_id, "workouts.date": date}
     
     existing_workout = weekly_plan_dboperations.read_one_from_mongodb(query)
     
     if existing_workout:
-        # Update existing workout
-        update_query = {"$set": {"workouts.$": new_workout}}
+        # Replace existing workout
+        if shouldReplace:
+            update_query = {"$set": {"workouts.$": new_workout}}
+        # Add all user workouts to generated plan 
+        else:
+            update_query = {
+            "$push": {
+                "workouts.$.exercises": {
+                    "$each": new_workout["exercises"]
+                }
+            }
+        }
         weekly_plan_dboperations.update_from_mongodb(query, update_query)
     else:
         # Insert new workout

@@ -15,13 +15,17 @@ from services.workout_guide_assistant import (
     WorkoutGuideAssistant,
     WorkoutGuidePurposeData,
 )
+from services.workout_log_assistant import (
+    WorkoutLogAssistant
+)
 from openai import OpenAI
 import logging
 import traceback
 import json
-from enum import Enum
+from enums import ChatPurpose
 from routers.user_profile import get_user_id_internal
 from .helpers.translator import Translator
+from .helpers import generate_plan_helpers as gph
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 logging.basicConfig(level=logging.ERROR)
@@ -32,13 +36,6 @@ class ChatMessage(BaseModel):
     content: str
     role: str
     timestamp: datetime
-
-
-class ChatPurpose(Enum):
-    WORKOUT_GUIDE = "workout_guide"
-    WORKOUT_JOURNAL = "workout_journal"
-    ONBOARDING = "onboarding"
-    GENERAL = "general"
 
 
 class BaseChatRequest(BaseModel):
@@ -106,7 +103,7 @@ async def chat(
     try:
         chat_id = request.chat_id or str(uuid.uuid4())
         user_id = await get_user_id_internal(current_user["email"])
-        chat_history = _get_chat_history(chat_id, False)
+        chat_history = gph._get_chat_history(chat_id, False)
         user_message = {"role": "user", "content": request.message}
 
         client = OpenAI()
@@ -127,6 +124,9 @@ async def chat(
                 "workout_date": request.purpose_data.workout_date,
                 "user_email": current_user["email"],
             }
+        elif request.purpose == ChatPurpose.WORKOUT_LOG:
+            assistant = WorkoutLogAssistant(client)
+            purpose_data = None
         else:
             raise HTTPException(status_code=400, detail="Invalid chat purpose")
 
@@ -181,7 +181,7 @@ async def get_chat_history(chat_id: str):
     Retrieve chat history for a given chat ID.
     """
     try:
-        chat_history = _get_chat_history(chat_id, True)
+        chat_history = gph._get_chat_history(chat_id, True)
         return chat_history
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -361,43 +361,3 @@ def _save_chat_messages(
         upsert=True,
     )
 
-
-def _get_chat_history(
-    chat_id: str, is_remove_system_message: bool
-) -> list[dict[str, str]]:
-    """
-    Retrieve chat history from the database.
-    Cleanup from chat history.
-    Return empty list if chat_id is not found.
-    """
-    db_operations = DbOperations("chat-history")
-    chat_document = db_operations.collection.find_one({"chat_id": chat_id})
-    messages = []
-    if chat_document and "messages" in chat_document:
-        messages = chat_document["messages"]
-        if is_remove_system_message:
-            messages = _cleanup_chat_history(chat_document)
-        return [{"role": m["role"], "content": m["content"]} for m in messages]
-    return messages
-
-
-def _cleanup_chat_history(chat_document: dict):
-    """
-    Always remove the first message if it's a system message.
-    Remove the first user message if the purpose is "workout_journal".
-    """
-    messages = chat_document.get("messages", [])
-
-    # Always remove the first message if it's a system message
-    if messages and messages[0]["role"] == "system":
-        messages.pop(0)
-
-    # Remove the first user message if the purpose is "workout_journal"
-    if chat_document.get("purpose") == ChatPurpose.WORKOUT_JOURNAL.value:
-        first_user_index = next(
-            (i for i, m in enumerate(messages) if m["role"] == "user"), None
-        )
-        if first_user_index is not None:
-            messages.pop(first_user_index)
-
-    return messages
