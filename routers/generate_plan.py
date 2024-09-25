@@ -72,9 +72,7 @@ async def generateWeeklyPlan(
         system_message = system_message.replace(
             "{start_of_week}", json.dumps(start_of_week)
         )
-        system_message = system_message.replace(
-            "{current_day}", current_day
-        )
+        system_message = system_message.replace("{current_day}", current_day)
         system_message = system_message.replace(
             "{old_training_plans}", json.dumps(old_weekly_training_plans)
         )
@@ -126,29 +124,46 @@ async def generate_quick_workout_plan(
         raise HTTPException(status_code=400, detail=error_message)
 
     # Check if a workout already exists for the given date
-    existing_workout = next((workout for workout in current_week_workout["workouts"] if workout["date"] == date), None)
+    existing_workout = next(
+        (
+            workout
+            for workout in current_week_workout["workouts"]
+            if workout["date"] == date
+        ),
+        None,
+    )
     if existing_workout:
         error_message = f"A workout already exists for the date: {date}"
         logger.error(error_message)
         raise HTTPException(status_code=400, detail=error_message)
-    
+
     user_id = await get_user_id_internal(current_user["email"])
     # retrieve user details from db
     user_data = gph._extract_user_data(user_id=user_id, chat_id=None)
 
     # retrieve all previous weeks of user fitness plans
     current_date = datetime.strptime(date, "%Y-%m-%d").date()
-    
-    old_weekly_training_plans = gph._get_all_old_weekly_training_plans(user_id=user_id, year=str(current_date.year))
+
+    old_weekly_training_plans = gph._get_all_old_weekly_training_plans(
+        user_id=user_id, year=str(current_date.year)
+    )
 
     client = OpenAI()
     with open("prompts/generate_quick_workout_plan_system_message.txt", "r") as file:
         system_message = file.read()
         system_message = system_message.replace("{user_data}", json.dumps(user_data))
-        system_message = system_message.replace("{current_week_workout}", json.dumps(current_week_workout))
-        system_message = system_message.replace("{current_date}", current_date.isoformat())
-        system_message = system_message.replace("{old_training_plans}", json.dumps(old_weekly_training_plans))
-    user_message = "Create a workout plan for a current date based on the given information."
+        system_message = system_message.replace(
+            "{current_week_workout}", json.dumps(current_week_workout)
+        )
+        system_message = system_message.replace(
+            "{current_date}", current_date.isoformat()
+        )
+        system_message = system_message.replace(
+            "{old_training_plans}", json.dumps(old_weekly_training_plans)
+        )
+    user_message = (
+        "Create a workout plan for a current date based on the given information."
+    )
 
     response = client.chat.completions.create(
         model="gpt-4o",
@@ -166,21 +181,18 @@ async def generate_quick_workout_plan(
     weekly_plan_dboperations = DbOperations("weekly-training-plans")
 
     try:
-        update_query = {
-            "$push": {
-                "workouts": quick_workout
-            }
-        }
-        weekly_plan_dboperations.update_from_mongodb(
-            {"week_id": week_id},
-            update_query
-        )
+        update_query = {"$push": {"workouts": quick_workout}}
+        weekly_plan_dboperations.update_from_mongodb({"week_id": week_id}, update_query)
 
-        logger.info(f"Quick workout for date {date} successfully added to the weekly plan.")
+        logger.info(
+            f"Quick workout for date {date} successfully added to the weekly plan."
+        )
         return quick_workout
 
     except Exception as e:
-        error_message = f"Error updating weekly training plan with quick workout: {str(e)}"
+        error_message = (
+            f"Error updating weekly training plan with quick workout: {str(e)}"
+        )
         logger.error(error_message)
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=error_message)
@@ -188,7 +200,10 @@ async def generate_quick_workout_plan(
 
 @router.post("/quickLogWorkout")
 async def log_workout(
-    date: str, chat_id: str, shouldReplace: bool, current_user: dict = Depends(user_or_admin_required)
+    date: str,
+    chat_id: str,
+    shouldReplace: bool,
+    current_user: dict = Depends(user_or_admin_required),
 ):
     """
     Add or update a workout based on chat_id for a given date.
@@ -196,20 +211,28 @@ async def log_workout(
     # retrieve the workout plan for the current week
     current_week_workout = await get_weekly_training_plan_api(date, current_user)
     if not current_week_workout:
-        error_message = "Logging workout cannot be done before generating a weekly workout."
+        error_message = (
+            "Logging workout cannot be done before generating a weekly workout."
+        )
         logger.error(error_message)
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=400, detail=error_message)
 
     current_date = datetime.strptime(date, "%Y-%m-%d").date().isoformat()
-    chat_history = gph._get_chat_history(chat_id, True)
+    chat_history, _, _ = gph._get_chat_history(chat_id, True)
 
     client = OpenAI()
     with open("prompts/user_specified_workout_log.txt", "r") as file:
         system_message = file.read()
-        system_message = system_message.replace("{current_date}", json.dumps(current_date))
-        system_message = system_message.replace("{chat_history}", json.dumps(chat_history))
-    user_message = "Recreate a workout plan based on given information for logging purpose."
+        system_message = system_message.replace(
+            "{current_date}", json.dumps(current_date)
+        )
+        system_message = system_message.replace(
+            "{chat_history}", json.dumps(chat_history)
+        )
+    user_message = (
+        "Recreate a workout plan based on given information for logging purpose."
+    )
 
     response = client.chat.completions.create(
         model="gpt-4o",
@@ -219,17 +242,23 @@ async def log_workout(
             {"role": "user", "content": user_message},
         ],
     )
-    
+
     workout_log = json.loads(response.choices[0].message.content)
     logger.info("Quick workout log is successfully generated.")
 
     week_id = current_week_workout["week_id"]
     try:
-        gph._update_or_insert_workout_for_specific_date(week_id, current_date, workout_log, shouldReplace)
-        logger.info(f"Workout log for date: {date} successfully added/updated in the weekly plan.")
+        gph._update_or_insert_workout_for_specific_date(
+            week_id, current_date, workout_log, shouldReplace
+        )
+        logger.info(
+            f"Workout log for date: {date} successfully added/updated in the weekly plan."
+        )
         return workout_log
     except Exception as e:
-        error_message = f"Error updating weekly training plan with workout log: {str(e)}"
+        error_message = (
+            f"Error updating weekly training plan with workout log: {str(e)}"
+        )
         logger.error(error_message)
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=error_message)
@@ -317,7 +346,7 @@ async def update_daily_summary(
     Based on weekly_training_plan and chat_history between user and assistant.
     Summarize the workout and update the "summary" field in the weekly_training_plan document of the given date.
     """
-    chat_history = gph._get_chat_history(chat_id, True)
+    chat_history, _, _ = gph._get_chat_history(chat_id, True)
     client = OpenAI()
     assistant = WorkoutJournalAssistant(client)
     checkin_summary = await assistant.summarize(
@@ -328,7 +357,7 @@ async def update_daily_summary(
     user_id = await get_user_id_internal(current_user["email"])
     target_date = datetime.strptime(date, "%Y-%m-%d")
     weekly_plan = await gph._get_weekly_training_plan_internal(target_date, user_id)
-    if weekly_plan: 
+    if weekly_plan:
         weekly_plan_dboperations = DbOperations("weekly-training-plans")
         update_query = {"$set": {"workouts.$.summary": checkin_summary}}
         match_query = {"week_id": weekly_plan["week_id"], "workouts.date": date}
@@ -336,7 +365,9 @@ async def update_daily_summary(
         try:
             weekly_plan_dboperations.update_from_mongodb(match_query, update_query)
         except Exception as e:
-            error_message = f"Error updating summary for date: {date} with error: {str(e)}"
+            error_message = (
+                f"Error updating summary for date: {date} with error: {str(e)}"
+            )
             logger.error(error_message)
             logger.error(traceback.format_exc())
             raise HTTPException(status_code=500, detail=error_message)
@@ -349,7 +380,7 @@ async def update_workout(
     week_id: str,
     date: str,
     chat_id: str,
-    current_user: dict = Depends(user_or_admin_required)
+    current_user: dict = Depends(user_or_admin_required),
 ):
     """
     Update the workout for a given date in the weekly-training-plans collection.
@@ -360,23 +391,33 @@ async def update_workout(
         user_details = gph._extract_user_data(user_id=user_id)
 
         # Get chat history and format chat history
-        chat_history = gph._get_chat_history(chat_id, True)
+        chat_history, _, _ = gph._get_chat_history(chat_id, True)
         formatted_chat_history = ""
         for message in chat_history:
             formatted_chat_history += f"{message['role']} : {message['content']}\n"
 
-        # Get original workout 
+        # Get original workout
         original_workout = gph.get_workout_by_date(week_id, date)
 
         # Generate new workout plan
         client = OpenAI()
-        with open("prompts/regenerate_specific_date_workout_system_message.txt", "r") as file:
+        with open(
+            "prompts/regenerate_specific_date_workout_system_message.txt", "r"
+        ) as file:
             system_message = file.read()
-            system_message = system_message.replace("{user_details}", json.dumps(user_details))
-            system_message = system_message.replace("{chat_history}", formatted_chat_history)
-            system_message = system_message.replace("{original_workout}", json.dumps(original_workout))
+            system_message = system_message.replace(
+                "{user_details}", json.dumps(user_details)
+            )
+            system_message = system_message.replace(
+                "{chat_history}", formatted_chat_history
+            )
+            system_message = system_message.replace(
+                "{original_workout}", json.dumps(original_workout)
+            )
 
-        user_message = "Create a new workout plan for a single day based on the given information."
+        user_message = (
+            "Create a new workout plan for a single day based on the given information."
+        )
 
         response = client.chat.completions.create(
             model="gpt-4o",

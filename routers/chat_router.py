@@ -15,9 +15,7 @@ from services.workout_guide_assistant import (
     WorkoutGuideAssistant,
     WorkoutGuidePurposeData,
 )
-from services.workout_log_assistant import (
-    WorkoutLogAssistant
-)
+from services.workout_log_assistant import WorkoutLogAssistant
 from openai import OpenAI
 import logging
 import traceback
@@ -103,7 +101,7 @@ async def chat(
     try:
         chat_id = request.chat_id or str(uuid.uuid4())
         user_id = await get_user_id_internal(current_user["email"])
-        chat_history = gph._get_chat_history(chat_id, False)
+        chat_history, _, _ = gph._get_chat_history(chat_id, False)
         user_message = {"role": "user", "content": request.message}
 
         client = OpenAI()
@@ -175,14 +173,29 @@ async def chat(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/chat/{chat_id}", response_model=List[Dict[str, str]])
+class ChatPurposeData(BaseModel):
+    workout_date: Optional[datetime] = None
+    user_name: Optional[str] = None
+
+
+class ChatHistoryResponse(BaseModel):
+    chat_history: List[Dict[str, str]]
+    purpose: Optional[str]
+    purpose_data: Optional[ChatPurposeData]
+
+
+@router.get("/chat/{chat_id}", response_model=ChatHistoryResponse)
 async def get_chat_history(chat_id: str):
     """
-    Retrieve chat history for a given chat ID.
+    Retrieve chat history, purpose, and purpose data for a given chat ID.
     """
     try:
-        chat_history = gph._get_chat_history(chat_id, True)
-        return chat_history
+        chat_history, purpose, purpose_data = gph._get_chat_history(chat_id, True)
+        return ChatHistoryResponse(
+            chat_history=chat_history,
+            purpose=purpose,
+            purpose_data=ChatPurposeData(**purpose_data) if purpose_data else None,
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -338,7 +351,7 @@ def _save_chat_messages(
     chat_id: str,
     messages: List[Dict[str, str]],
     purpose: ChatPurpose,
-    purpose_content: Optional[
+    purpose_data: Optional[
         Union[OnboardingChatRequest, WorkoutJournalChatRequest, WorkoutGuideChatRequest]
     ],
 ):
@@ -346,7 +359,7 @@ def _save_chat_messages(
     Save chat messages to the database.
     """
     db_operations = DbOperations("chat-history")
-    purpose_content_dict = purpose_content.model_dump() if purpose_content else None
+    purpose_data_dict = purpose_data.model_dump() if purpose_data else None
     db_operations.collection.update_one(
         {"chat_id": chat_id},
         {
@@ -354,10 +367,9 @@ def _save_chat_messages(
                 "user_id": user_id,
                 "time": datetime.now().isoformat(),
                 "purpose": purpose.value,
-                "purpose_content": purpose_content_dict,
+                "purpose_data": purpose_data_dict,
                 "messages": messages,
             }
         },
         upsert=True,
     )
-
