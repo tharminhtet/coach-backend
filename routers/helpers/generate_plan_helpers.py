@@ -8,6 +8,7 @@ import traceback
 from services.onboarding_assistant import OnboardingAssistant
 from enums import ChatPurpose
 from openai import OpenAI
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -155,21 +156,30 @@ def _update_overall_training_plan(
 
 def _get_chat_history(
     chat_id: str, is_remove_system_message: bool
-) -> list[dict[str, str]]:
+) -> tuple[list[dict[str, str]], Optional[str], Optional[dict]]:
     """
     Retrieve chat history from the database.
     Cleanup from chat history.
     Return empty list if chat_id is not found.
+    Also return purpose and purpose_data.
     """
     db_operations = DbOperations("chat-history")
     chat_document = db_operations.collection.find_one({"chat_id": chat_id})
     messages = []
+    purpose = None
+    purpose_data = None
     if chat_document and "messages" in chat_document:
         messages = chat_document["messages"]
+        purpose = chat_document.get("purpose")
+        purpose_data = chat_document.get("purpose_data")
         if is_remove_system_message:
             messages = _cleanup_chat_history(chat_document)
-        return [{"role": m["role"], "content": m["content"]} for m in messages]
-    return messages
+        return (
+            [{"role": m["role"], "content": m["content"]} for m in messages],
+            purpose,
+            purpose_data,
+        )
+    return messages, purpose, purpose_data
 
 
 def _cleanup_chat_history(chat_document: dict):
@@ -315,6 +325,7 @@ async def _get_weekly_training_plan_internal(target_date: datetime, user_id: str
     weekly_plan = _get_weekly_training_plan(week_id)
     return weekly_plan
 
+
 def get_workout_by_date(week_id: str, date: str) -> dict:
     """
     Retrieve the workout plan for a specific date within a given week.
@@ -322,13 +333,17 @@ def get_workout_by_date(week_id: str, date: str) -> dict:
     weekly_plan_dboperations = DbOperations("weekly-training-plans")
     query = {"week_id": week_id, "workouts.date": date}
     projection = {"workouts.$": 1}
-    
+
     try:
-        result = weekly_plan_dboperations.read_one_from_mongodb_with_projection(query, projection)
-        if result and 'workouts' in result and len(result['workouts']) > 0:
-            return result['workouts'][0]
+        result = weekly_plan_dboperations.read_one_from_mongodb_with_projection(
+            query, projection
+        )
+        if result and "workouts" in result and len(result["workouts"]) > 0:
+            return result["workouts"][0]
         else:
-            error_message = f"No workout plan found for week_id: {week_id} and date: {date}"
+            error_message = (
+                f"No workout plan found for week_id: {week_id} and date: {date}"
+            )
             logger.error(error_message)
             logger.error(traceback.format_exc())
             raise HTTPException(status_code=404, detail=error_message)
@@ -340,6 +355,7 @@ def get_workout_by_date(week_id: str, date: str) -> dict:
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=error_message)
 
+
 def update_workout_by_date(week_id: str, date: str, new_workout: dict):
     """
     Update with new_workout based on given week_id and date.
@@ -348,11 +364,11 @@ def update_workout_by_date(week_id: str, date: str, new_workout: dict):
     update_query = {
         "$set": {
             "workouts.$.exercises": new_workout["exercises"],
-            "workouts.$.reasoning": new_workout["reasoning"]
+            "workouts.$.reasoning": new_workout["reasoning"],
         }
     }
     match_query = {"week_id": week_id, "workouts.date": date}
-    
+
     try:
         existing_workout = weekly_plan_dboperations.read_one_from_mongodb(match_query)
         if not existing_workout:
@@ -366,6 +382,7 @@ def update_workout_by_date(week_id: str, date: str, new_workout: dict):
         logger.error(error_message)
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=error_message)
+
 
 def update_weekly_summary(user_id: str):
     """
@@ -414,25 +431,24 @@ def update_weekly_summary(user_id: str):
                 logger.error(traceback.format_exc())
                 raise HTTPException(status_code=500, detail=error_message)
 
-def _update_or_insert_workout_for_specific_date(week_id: str, date: str, new_workout: dict, shouldReplace: bool):
+
+def _update_or_insert_workout_for_specific_date(
+    week_id: str, date: str, new_workout: dict, shouldReplace: bool
+):
     weekly_plan_dboperations = DbOperations("weekly-training-plans")
     query = {"week_id": week_id, "workouts.date": date}
-    
+
     existing_workout = weekly_plan_dboperations.read_one_from_mongodb(query)
-    
+
     if existing_workout:
         # Replace existing workout
         if shouldReplace:
             update_query = {"$set": {"workouts.$": new_workout}}
-        # Add all user workouts to generated plan 
+        # Add all user workouts to generated plan
         else:
             update_query = {
-            "$push": {
-                "workouts.$.exercises": {
-                    "$each": new_workout["exercises"]
-                }
+                "$push": {"workouts.$.exercises": {"$each": new_workout["exercises"]}}
             }
-        }
         weekly_plan_dboperations.update_from_mongodb(query, update_query)
     else:
         # Insert new workout
