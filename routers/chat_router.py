@@ -51,15 +51,16 @@ class OnboardingChatRequest(BaseModel):
 
 
 class WorkoutJournalChatRequest(BaseModel):
-    workout_date: datetime = Field(
-        ..., description="Date of the workout being journaled"
+    workout_date: str = Field(
+        ..., description="Date of the workout being journaled (format: YYYY-MM-DD)"
     )
 
 
 class WorkoutGuideChatRequest(BaseModel):
-    workout_date: datetime = Field(
-        ..., description="Date of the workout guide being asked."
+    workout_guide_date: str = Field(
+        ..., description="Date of the workout guide being asked (format: YYYY-MM-DD)"
     )
+    week_id: str = Field(..., description="Week ID of the workout guide being asked.")
 
 
 class ChatRequest(BaseChatRequest):
@@ -119,7 +120,7 @@ async def chat(
         elif request.purpose == ChatPurpose.WORKOUT_GUIDE:
             assistant = WorkoutGuideAssistant(client)
             purpose_data: WorkoutGuidePurposeData = {
-                "workout_date": request.purpose_data.workout_date,
+                "workout_date": request.purpose_data.workout_guide_date,
                 "user_email": current_user["email"],
             }
         elif request.purpose == ChatPurpose.WORKOUT_LOG:
@@ -173,15 +174,12 @@ async def chat(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-class ChatPurposeData(BaseModel):
-    workout_date: Optional[datetime] = None
-    user_name: Optional[str] = None
-
-
 class ChatHistoryResponse(BaseModel):
     chat_history: List[Dict[str, str]]
-    purpose: Optional[str]
-    purpose_data: Optional[ChatPurposeData]
+    purpose: Optional[ChatPurpose]
+    purpose_data: Optional[
+        Union[OnboardingChatRequest, WorkoutJournalChatRequest, WorkoutGuideChatRequest]
+    ]
 
 
 @router.get("/chat/{chat_id}", response_model=ChatHistoryResponse)
@@ -191,10 +189,24 @@ async def get_chat_history(chat_id: str):
     """
     try:
         chat_history, purpose, purpose_data = gph._get_chat_history(chat_id, True)
+
+        # Convert purpose to ChatPurpose enum
+        purpose_enum = ChatPurpose(purpose) if purpose else None
+
+        # Create the appropriate purpose_data object based on the purpose
+        typed_purpose_data = None
+        if purpose_data:
+            if purpose_enum == ChatPurpose.ONBOARDING:
+                typed_purpose_data = OnboardingChatRequest(**purpose_data)
+            elif purpose_enum == ChatPurpose.WORKOUT_JOURNAL:
+                typed_purpose_data = WorkoutJournalChatRequest(**purpose_data)
+            elif purpose_enum == ChatPurpose.WORKOUT_GUIDE:
+                typed_purpose_data = WorkoutGuideChatRequest(**purpose_data)
+
         return ChatHistoryResponse(
             chat_history=chat_history,
-            purpose=purpose,
-            purpose_data=ChatPurposeData(**purpose_data) if purpose_data else None,
+            purpose=purpose_enum,
+            purpose_data=typed_purpose_data,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
