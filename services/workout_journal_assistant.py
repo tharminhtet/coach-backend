@@ -25,7 +25,7 @@ class ResponseModel(BaseModel):
 
 
 class WorkoutJournalPurposeData(TypedDict):
-    workout_date: datetime
+    workout_date: str
     user_email: str
 
 
@@ -66,14 +66,15 @@ class WorkoutJournalAssistant(BaseAssistant):
             with open(prompt_map["workout_journal_checkin_chat"], "r") as file:
                 system_message = file.read()
             training_plan = await self._retrieve_training_plan(
-                purpose_data["workout_date"], purpose_data["user_email"]
+                datetime.strptime(purpose_data["workout_date"], "%Y-%m-%d"),
+                purpose_data["user_email"],
             )
             system_message = system_message.replace(
                 "{%weekly_workout_plan%}",
                 json.dumps(training_plan),
             )
             system_message = system_message.replace(
-                "{%current_date%}", purpose_data["workout_date"].strftime("%Y-%m-%d")
+                "{%current_date%}", purpose_data["workout_date"]
             )
         elif chat_history[0]["role"] == "system":
             system_message = chat_history[0]["content"]
@@ -94,7 +95,7 @@ class WorkoutJournalAssistant(BaseAssistant):
         with open(prompt_map["workout_journal_checkin_summarize"], "r") as file:
             system_message = file.read()
 
-        workout_journal_data = await self._retrieve_workout_journal_data(
+        workout_journal_data = await self._retrieve_training_plan(
             datetime.strptime(date, "%Y-%m-%d"), user_email
         )
         system_message = system_message.replace(
