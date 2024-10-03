@@ -198,18 +198,24 @@ async def generate_quick_workout_plan(
         raise HTTPException(status_code=500, detail=error_message)
 
 
-@router.post("/quickLogWorkout")
+class LogWorkoutRequest(BaseModel):
+    date: str
+    chat_id: str
+    should_replace: bool
+
+
+@router.post("/logWorkout")
 async def log_workout(
-    date: str,
-    chat_id: str,
-    shouldReplace: bool,
+    request: LogWorkoutRequest,
     current_user: dict = Depends(user_or_admin_required),
 ):
     """
     Add or update a workout based on chat_id for a given date.
     """
     # retrieve the workout plan for the current week
-    current_week_workout = await get_weekly_training_plan_api(date, current_user)
+    current_week_workout = await get_weekly_training_plan_api(
+        request.date, current_user
+    )
     if not current_week_workout:
         error_message = (
             "Logging workout cannot be done before generating a weekly workout."
@@ -218,8 +224,8 @@ async def log_workout(
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=400, detail=error_message)
 
-    current_date = datetime.strptime(date, "%Y-%m-%d").date().isoformat()
-    chat_history, _, _ = gph._get_chat_history(chat_id, True)
+    current_date = datetime.strptime(request.date, "%Y-%m-%d").date().isoformat()
+    chat_history, _, _ = gph._get_chat_history(request.chat_id, True)
 
     client = OpenAI()
     with open("prompts/user_specified_workout_log.txt", "r") as file:
@@ -249,10 +255,10 @@ async def log_workout(
     week_id = current_week_workout["week_id"]
     try:
         gph._update_or_insert_workout_for_specific_date(
-            week_id, current_date, workout_log, shouldReplace
+            week_id, current_date, workout_log, request.should_replace
         )
         logger.info(
-            f"Workout log for date: {date} successfully added/updated in the weekly plan."
+            f"Workout log for date: {request.date} successfully added/updated in the weekly plan."
         )
         return workout_log
     except Exception as e:

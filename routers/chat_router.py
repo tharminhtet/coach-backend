@@ -103,7 +103,10 @@ async def chat(
         chat_id = request.chat_id or str(uuid.uuid4())
         user_id = await get_user_id_internal(current_user["email"])
         chat_history, _, _ = gph._get_chat_history(chat_id, False)
-        user_message = {"role": "user", "content": request.message}
+        # user_message isn't needed for the initial message, marked by empty content.
+        user_message = (
+            {"role": "user", "content": request.message} if request.message else None
+        )
 
         client = OpenAI()
         if request.purpose == ChatPurpose.ONBOARDING:
@@ -120,7 +123,9 @@ async def chat(
         elif request.purpose == ChatPurpose.WORKOUT_GUIDE:
             assistant = WorkoutGuideAssistant(client)
             purpose_data: WorkoutGuidePurposeData = {
-                "workout_date": request.purpose_data.workout_guide_date,
+                "workout_date": datetime.strptime(
+                    request.purpose_data.workout_guide_date, "%Y-%m-%d"
+                ),
                 "user_email": current_user["email"],
             }
         elif request.purpose == ChatPurpose.WORKOUT_LOG:
@@ -154,7 +159,9 @@ async def chat(
                 ai_message = {"role": "assistant", "content": full_response.response}
                 if system_message:
                     chat_history = [{"role": "system", "content": system_message}]
-                chat_history.extend([user_message, ai_message])
+                if user_message:
+                    chat_history.append(user_message)
+                chat_history.append(ai_message)
                 _save_chat_messages(
                     user_id,
                     chat_id,

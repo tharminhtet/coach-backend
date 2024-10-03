@@ -76,6 +76,8 @@ class WorkoutJournalAssistant(BaseAssistant):
             system_message = system_message.replace(
                 "{%current_date%}", purpose_data["workout_date"]
             )
+            # Initial message isn't initiated by the user.
+            user_message = "Let's start the daily workout check-in"
         elif chat_history[0]["role"] == "system":
             system_message = chat_history[0]["content"]
             chat_history = chat_history[1:]
