@@ -19,21 +19,15 @@ class FitnessLevel(str, Enum):
     ADVANCED = "Advanced"
 
 
-class UserStats(BaseModel):
-    availableDays: int  # how many days a person can workout
-    preferredDays: List[str]  # which days a person would like to workout
-    availableEquipments: List[str]
-    fitnessLevel: FitnessLevel = FitnessLevel.BEGINNER
-    bodyWeight: int  # kg
-    height: int  # cm
-    goal: str
-    constraint: str
+class UserProfile(BaseModel):
+    personalInfo: Dict[str, Union[str, int, float]]
+    fitnessProfile: Dict[str, Union[str, List[str]]]
+    healthInfo: Dict[str, Union[str, List[str]]]
+    lifestyle: Dict[str, Union[str, List[str]]]
 
 
 class Request(BaseModel):
-    age: int
-    gender: str
-    stats: UserStats
+    userProfile: UserProfile
 
 
 class UpdateUserDetailsRequest(BaseModel):
@@ -116,17 +110,33 @@ async def initiateUserDetails(current_user: dict = Depends(user_or_admin_require
         # Create skeleton user details
         user_details = {
             "user_id": user_id,
-            "age": None,
-            "gender": None,
-            "stats": {
-                "availableDays": None,
-                "preferredDays": [],
-                "availableEquipments": [],
-                "fitnessLevel": FitnessLevel.BEGINNER,
-                "bodyWeight": None,
+            "personalInfo": {
+                "name": None,
+                "gender": None,
+                "age": None,
                 "height": None,
-                "goal": [],
-                "constraint": [],
+                "weight": None,
+                "bodyType": None,
+            },
+            "fitnessProfile": {
+                "fitnessLevel": None,
+                "fitnessGoal": [],
+                "currentActivities": [],
+                "cardioPreference": None,
+            },
+            "healthInfo": {
+                "injuries": [],
+                "otherHealthConstraints": None,
+                "dietaryPreferences": [],
+            },
+            "lifestyle": {
+                "trainingLocation": [],
+                "gymType": None,
+                "workoutTime": [],
+                "workoutDays": [],
+                "workoutDuration": None,
+                "availableDays": None,
+                "availableEquipments": [],
             },
         }
 
@@ -319,15 +329,23 @@ async def verify_user_details(current_user: dict = Depends(user_or_admin_require
             raise HTTPException(status_code=404, detail="User details not found")
 
         required_fields = [
-            "age",
-            "gender",
-            "stats.availableDays",
-            "stats.preferredDays",
-            "stats.availableEquipments",
-            "stats.fitnessLevel",
-            "stats.bodyWeight",
-            "stats.height",
-            "stats.goal",
+            "personalInfo.name",
+            "personalInfo.gender",
+            "personalInfo.age",
+            "personalInfo.height",
+            "personalInfo.weight",
+            "personalInfo.bodyType",
+            "fitnessProfile.fitnessLevel",
+            "fitnessProfile.fitnessGoal",
+            "fitnessProfile.currentActivities",
+            "fitnessProfile.cardioPreference",
+            "lifestyle.trainingLocation",
+            "lifestyle.gymType",
+            "lifestyle.workoutTime",
+            "lifestyle.workoutDays",
+            "lifestyle.workoutDuration",
+            "lifestyle.availableDays",
+            "lifestyle.availableEquipments",
         ]
 
         missing_fields = [
@@ -364,16 +382,26 @@ def _validate_update_user_details(
     Validate if user_details_field and its value is valid type.
     """
     valid_fields = [
-        "age",
-        "gender",
-        "stats.availableDays",
-        "stats.preferredDays",
-        "stats.availableEquipments",
-        "stats.fitnessLevel",
-        "stats.bodyWeight",
-        "stats.height",
-        "stats.goal",
-        "stats.constraint",
+        "personalInfo.name",
+        "personalInfo.gender",
+        "personalInfo.age",
+        "personalInfo.height",
+        "personalInfo.weight",
+        "personalInfo.bodyType",
+        "fitnessProfile.fitnessLevel",
+        "fitnessProfile.fitnessGoal",
+        "fitnessProfile.currentActivities",
+        "fitnessProfile.cardioPreference",
+        "healthInfo.injuries",
+        "healthInfo.otherHealthConstraints",
+        "healthInfo.dietaryPreferences",
+        "lifestyle.trainingLocation",
+        "lifestyle.gymType",
+        "lifestyle.workoutTime",
+        "lifestyle.workoutDays",
+        "lifestyle.workoutDuration",
+        "lifestyle.availableDays",
+        "lifestyle.availableEquipments",
     ]
     if user_details_field not in valid_fields:
         error_message = "Invalid user_details_field."
@@ -382,7 +410,7 @@ def _validate_update_user_details(
         raise HTTPException(status_code=400, detail=error_message)
 
     # Additional validation for FitnessLevel
-    if user_details_field == "stats.fitnessLevel":
+    if user_details_field == "fitnessProfile.fitnessLevel":
         try:
             FitnessLevel(value)
         except ValueError:
@@ -392,8 +420,22 @@ def _validate_update_user_details(
             raise HTTPException(status_code=400, detail=error_message)
 
     # Additional type validations
-    int_fields = ["age", "stats.bodyWeight", "stats.height"]
-    list_fields = ["stats.preferredDays", "stats.availableEquipments"]
+    int_fields = [
+        "personalInfo.age",
+        "personalInfo.height",
+        "personalInfo.weight",
+        "lifestyle.availableDays",
+    ]
+    list_fields = [
+        "fitnessProfile.fitnessGoal",
+        "fitnessProfile.currentActivities",
+        "healthInfo.injuries",
+        "healthInfo.dietaryPreferences",
+        "lifestyle.trainingLocation",
+        "lifestyle.workoutTime",
+        "lifestyle.workoutDays",
+        "lifestyle.availableEquipments",
+    ]
 
     if user_details_field in int_fields and not isinstance(value, int):
         error_message = f"{user_details_field} must be an integer."
@@ -415,8 +457,17 @@ def _validate_update_user_details(
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=400, detail=error_message)
 
-    if user_details_field == "gender" and not isinstance(value, str):
-        error_message = "Gender must be a string."
+    string_fields = [
+        "personalInfo.name",
+        "personalInfo.gender",
+        "personalInfo.bodyType",
+        "fitnessProfile.cardioPreference",
+        "healthInfo.otherHealthConstraints",
+        "lifestyle.gymType",
+        "lifestyle.workoutDuration",
+    ]
+    if user_details_field in string_fields and not isinstance(value, str):
+        error_message = f"{user_details_field} must be a string."
         logger.error(error_message)
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=400, detail=error_message)
