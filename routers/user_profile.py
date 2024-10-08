@@ -14,9 +14,11 @@ logger = logging.getLogger(__name__)
 
 
 class FitnessLevel(str, Enum):
-    BEGINNER = "Beginner"
-    INTERMEDIATE = "Intermediate"
-    ADVANCED = "Advanced"
+    BEGINNER = "Beginner (You're new to fitness and want to learn the basics)"
+    NOVICE = "Novice (You have some experience but are still learning)"
+    INTERMEDIATE = "Intermediate (You're comfortable with most exercises and have been training regularly)"
+    ADVANCED = "Advanced (You have significant experience and are looking to optimize your training)"
+    ATHLETE = "Athlete (You train at a competitive level)"
 
 
 class UserProfile(BaseModel):
@@ -131,12 +133,11 @@ async def initiateUserDetails(current_user: dict = Depends(user_or_admin_require
             },
             "lifestyle": {
                 "trainingLocation": [],
-                "gymType": None,
+                "gymType": [],
                 "workoutTime": [],
                 "workoutDays": [],
                 "workoutDuration": None,
                 "availableDays": None,
-                "availableEquipments": [],
             },
         }
 
@@ -345,7 +346,6 @@ async def verify_user_details(current_user: dict = Depends(user_or_admin_require
             "lifestyle.workoutDays",
             "lifestyle.workoutDuration",
             "lifestyle.availableDays",
-            "lifestyle.availableEquipments",
         ]
 
         missing_fields = [
@@ -401,7 +401,6 @@ def _validate_update_user_details(
         "lifestyle.workoutDays",
         "lifestyle.workoutDuration",
         "lifestyle.availableDays",
-        "lifestyle.availableEquipments",
     ]
     if user_details_field not in valid_fields:
         error_message = "Invalid user_details_field."
@@ -419,29 +418,16 @@ def _validate_update_user_details(
             logger.error(traceback.format_exc())
             raise HTTPException(status_code=400, detail=error_message)
 
-    # Additional type validations
-    int_fields = [
-        "personalInfo.age",
-        "personalInfo.height",
-        "personalInfo.weight",
-        "lifestyle.availableDays",
-    ]
     list_fields = [
         "fitnessProfile.fitnessGoal",
         "fitnessProfile.currentActivities",
         "healthInfo.injuries",
         "healthInfo.dietaryPreferences",
         "lifestyle.trainingLocation",
+        "lifestyle.gymType",
         "lifestyle.workoutTime",
         "lifestyle.workoutDays",
-        "lifestyle.availableEquipments",
     ]
-
-    if user_details_field in int_fields and not isinstance(value, int):
-        error_message = f"{user_details_field} must be an integer."
-        logger.error(error_message)
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=400, detail=error_message)
 
     if user_details_field in list_fields and not isinstance(value, list):
         error_message = f"{user_details_field} must be a list of strings."
@@ -463,7 +449,6 @@ def _validate_update_user_details(
         "personalInfo.bodyType",
         "fitnessProfile.cardioPreference",
         "healthInfo.otherHealthConstraints",
-        "lifestyle.gymType",
         "lifestyle.workoutDuration",
     ]
     if user_details_field in string_fields and not isinstance(value, str):
