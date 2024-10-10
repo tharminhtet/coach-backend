@@ -103,6 +103,7 @@ async def chat(
         chat_id = request.chat_id or str(uuid.uuid4())
         user_id = await get_user_id_internal(current_user["email"])
         chat_history, _, _ = gph._get_chat_history(chat_id, False)
+        user_memories = gph._extract_user_memories(user_id=user_id)
         # user_message isn't needed for the initial message, marked by empty content.
         user_message = (
             {"role": "user", "content": request.message} if request.message else None
@@ -135,7 +136,10 @@ async def chat(
             raise HTTPException(status_code=400, detail="Invalid chat purpose")
 
         ai_response_stream, system_message = await assistant.chat(
-            chat_history, request.message, purpose_data
+            chat_history,
+            request.message,
+            purpose_data,
+            json.dumps(user_memories, indent=2),
         )
 
         def generate():

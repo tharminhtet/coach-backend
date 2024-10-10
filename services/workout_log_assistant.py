@@ -37,6 +37,7 @@ class WorkoutLogAssistant(BaseAssistant):
         chat_history: list[dict],
         user_message: str,
         purpose_data: Optional[Dict[str, Any]] = None,
+        user_memories: Optional[str] = None,
     ) -> tuple[StreamingResponse, Optional[str]]:
         """
         Process a chat message for the workout guide assistant.
@@ -57,10 +58,14 @@ class WorkoutLogAssistant(BaseAssistant):
         if is_new_conversation:
             with open(prompt_map["workout_log_chat"], "r") as file:
                 system_message = file.read()
+                if user_memories:
+                    system_message = system_message.replace(
+                        "{instructions}", user_memories
+                    )
         elif chat_history[0]["role"] == "system":
             system_message = chat_history[0]["content"]
             chat_history = chat_history[1:]
-
+        print(system_message)
         response_data = self.client.chat_json_output_stream(
             chat_history, system_message, user_message, ResponseModel
         )
