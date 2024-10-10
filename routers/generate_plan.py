@@ -238,19 +238,15 @@ async def log_workout(
 
     current_date = datetime.strptime(request.date, "%Y-%m-%d").date().isoformat()
     chat_history, _, _ = gph._get_chat_history(request.chat_id, True)
+    formatted_chat_history = gph.format_chat_history(chat_history)
 
     client = OpenAI()
-    with open("prompts/user_specified_workout_log.txt", "r") as file:
+    with open("prompts/log_workout_system_message.txt", "r") as file:
         system_message = file.read()
-        system_message = system_message.replace(
-            "{current_date}", json.dumps(current_date)
-        )
-        system_message = system_message.replace(
-            "{chat_history}", json.dumps(chat_history)
-        )
-    user_message = (
-        "Recreate a workout plan based on given information for logging purpose."
-    )
+    with open("prompts/log_workout_user_message.txt", "r") as file:
+        user_message = file.read()
+        user_message = user_message.replace("{workout_date}", current_date)
+        user_message = user_message.replace("{chat_history}", formatted_chat_history)
 
     response = client.chat.completions.create(
         model="gpt-4o",
