@@ -29,9 +29,15 @@ class UpdateStatusRequest(BaseModel):
     status: List[str]
 
 
-@router.get("/generateWeeklyPlan")
+class GenerateWeeklyPlanRequest(BaseModel):
+    comment: str | None = None
+    chat_id: str | None = None
+
+
+@router.post("/generateWeeklyPlan")
 async def generateWeeklyPlan(
-    chat_id: str | None = None, current_user: dict = Depends(user_or_admin_required)
+    request: GenerateWeeklyPlanRequest,
+    current_user: dict = Depends(user_or_admin_required),
 ):
     """
     Generate weekly training plan for given user.
@@ -52,7 +58,8 @@ async def generateWeeklyPlan(
         }, 400
 
     # retrieve user details from chat or db
-    user_data = gph._extract_user_data(user_id=user_id, chat_id=chat_id)
+    user_data = gph._extract_user_data(user_id=user_id, chat_id=request.chat_id)
+    user_memories = gph._extract_user_memories(user_id=user_id)
     # update the last week summary if exists
     gph.update_weekly_summary(user_id=user_id)
 
@@ -68,17 +75,22 @@ async def generateWeeklyPlan(
     current_day = datetime.now().strftime("%Y-%m-%d")
     with open("prompts/generate_fitness_plan_system_message.txt", "r") as file:
         system_message = file.read()
-        system_message = system_message.replace("{user_data}", json.dumps(user_data))
-        system_message = system_message.replace(
+    with open("prompts/generate_fitness_plan_user_message.txt", "r") as file:
+        user_message = file.read()
+        user_message = user_message.replace(
+            "{instructions}", json.dumps(user_memories, indent=2)
+        )
+        user_message = user_message.replace(
+            "{user_data}", json.dumps(user_data, indent=2)
+        )
+        user_message = user_message.replace(
             "{start_of_week}", json.dumps(start_of_week)
         )
-        system_message = system_message.replace("{current_day}", current_day)
-        system_message = system_message.replace(
-            "{old_training_plans}", json.dumps(old_weekly_training_plans)
+        user_message = user_message.replace("{current_day}", current_day)
+        user_message = user_message.replace(
+            "{old_training_plans}", json.dumps(old_weekly_training_plans, indent=2)
         )
-    # with open("prompts/generate_fitness_plan_user_message.txt", "r") as file:
-    #     user_message = file.read()
-    user_message = "Create a workout plan based on the given information."
+        user_message = user_message.replace("{comment}", request.comment)
 
     response = client.chat.completions.create(
         model="gpt-4o",

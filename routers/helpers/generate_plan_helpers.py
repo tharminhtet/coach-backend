@@ -62,7 +62,28 @@ def _extract_user_data(
         for data in user_data:
             data.pop("_id", None)
 
+    # Remove memories field before returning
+    for data in user_data:
+        data.pop("memories", None)
+
     return user_data
+
+def _extract_user_memories(user_id: str) -> Optional[list[str]]:
+    """
+    Retrieve user memories from user-details collection.
+    """
+    user_details_dboperations = DbOperations("user-details")
+    try:
+        user_data = user_details_dboperations.read_from_mongodb(query_param=user_id)
+        if not user_data:
+            logger.warning(f"User data not found for user_id: {user_id}")
+            return None
+        return user_data[0].get("memories", [])
+    except Exception as e:
+        error_message = f"Error reading user memories for user_id: {user_id} from MongoDB: {e}"
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        return None
 
 
 def _get_all_old_weekly_training_plans(user_id: str, year: str) -> list[dict[str, str]]:

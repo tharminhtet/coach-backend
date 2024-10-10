@@ -26,6 +26,7 @@ class UserProfile(BaseModel):
     fitnessProfile: Dict[str, Union[str, List[str]]]
     healthInfo: Dict[str, Union[str, List[str]]]
     lifestyle: Dict[str, Union[str, List[str]]]
+    memories: List[str]
 
 
 class Request(BaseModel):
@@ -139,6 +140,7 @@ async def initiateUserDetails(current_user: dict = Depends(user_or_admin_require
                 "workoutDuration": None,
                 "availableDays": None,
             },
+            "memories": [],
         }
 
         user_dboperations = DbOperations("user-details")
@@ -401,6 +403,7 @@ def _validate_update_user_details(
         "lifestyle.workoutDays",
         "lifestyle.workoutDuration",
         "lifestyle.availableDays",
+        "memories",
     ]
     if user_details_field not in valid_fields:
         error_message = "Invalid user_details_field."
@@ -427,6 +430,7 @@ def _validate_update_user_details(
         "lifestyle.gymType",
         "lifestyle.workoutTime",
         "lifestyle.workoutDays",
+        "memories",
     ]
 
     if user_details_field in list_fields and not isinstance(value, list):
