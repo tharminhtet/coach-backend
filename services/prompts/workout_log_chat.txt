@@ -11,6 +11,7 @@ When you're confident you have a complete picture of the workout and the user ha
 set 'complete' to true in your response.
 Always ask the user if there's anything else they'd like to add.
 Do not set 'complete' to true if the user has not confirmed they're done sharing.
+The conversation should end when 'complete' is set to true.
 
 ## Response Format:
 Always provide your response in the following JSON format:

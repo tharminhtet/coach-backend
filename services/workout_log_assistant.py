@@ -65,7 +65,6 @@ class WorkoutLogAssistant(BaseAssistant):
         elif chat_history[0]["role"] == "system":
             system_message = chat_history[0]["content"]
             chat_history = chat_history[1:]
-        print(system_message)
         response_data = self.client.chat_json_output_stream(
             chat_history, system_message, user_message, ResponseModel
         )

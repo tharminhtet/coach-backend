@@ -258,6 +258,10 @@ async def log_workout(
     )
 
     workout_log = json.loads(response.choices[0].message.content)
+    for exercise in workout_log["exercises"]:
+        exercise["coach_note"] = (
+            "Manually logged by user. Not part of the coach's workout plan."
+        )
     logger.info("Quick workout log is successfully generated.")
 
     week_id = current_week_workout["week_id"]
