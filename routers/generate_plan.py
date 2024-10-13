@@ -241,9 +241,9 @@ async def log_workout(
     formatted_chat_history = gph.format_chat_history(chat_history)
 
     client = OpenAI()
-    with open("prompts/log_workout_system_message.txt", "r") as file:
+    with open("prompts/log_user_specified_workout_system_message.txt", "r") as file:
         system_message = file.read()
-    with open("prompts/log_workout_user_message.txt", "r") as file:
+    with open("prompts/log_user_specified_workout_user_message.txt", "r") as file:
         user_message = file.read()
         user_message = user_message.replace("{workout_date}", current_date)
         user_message = user_message.replace("{chat_history}", formatted_chat_history)
