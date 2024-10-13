@@ -1,0 +1,7 @@
+### Time information ###
+Workout date: {workout_date}
+
+### Conversation history with user ###
+{chat_history}
+
+Please log the workout.

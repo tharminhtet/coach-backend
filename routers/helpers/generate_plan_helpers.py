@@ -62,7 +62,31 @@ def _extract_user_data(
         for data in user_data:
             data.pop("_id", None)
 
+    # Remove memories field before returning
+    for data in user_data:
+        data.pop("memories", None)
+
     return user_data
+
+
+def _extract_user_memories(user_id: str) -> Optional[list[str]]:
+    """
+    Retrieve user memories from user-details collection.
+    """
+    user_details_dboperations = DbOperations("user-details")
+    try:
+        user_data = user_details_dboperations.read_from_mongodb(query_param=user_id)
+        if not user_data:
+            logger.warning(f"User data not found for user_id: {user_id}")
+            return None
+        return user_data[0].get("memories", [])
+    except Exception as e:
+        error_message = (
+            f"Error reading user memories for user_id: {user_id} from MongoDB: {e}"
+        )
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
+        return None
 
 
 def _get_all_old_weekly_training_plans(user_id: str, year: str) -> list[dict[str, str]]:
@@ -435,6 +459,26 @@ def update_weekly_summary(user_id: str):
 def _update_or_insert_workout_for_specific_date(
     week_id: str, date: str, new_workout: dict, shouldReplace: bool
 ):
+    """
+    Update or insert a workout for a specific date in the weekly training plan.
+
+    This function checks if a workout already exists for the given date and week_id.
+    If it exists, it either replaces the existing workout or adds new exercises to it,
+    depending on the 'shouldReplace' parameter. If no workout exists for the date,
+    it inserts the new workout into the plan.
+
+    Args:
+    week_id (str): The unique identifier for the weekly training plan.
+    date (str): The date of the workout to update or insert.
+    new_workout (dict): The new workout data to be added or used for replacement.
+    shouldReplace (bool): If True, replace the existing workout; if False, add to it.
+
+    Returns:
+    None
+
+    Raises:
+    Any exceptions raised by the database operations are not caught in this function.
+    """
     weekly_plan_dboperations = DbOperations("weekly-training-plans")
     query = {"week_id": week_id, "workouts.date": date}
 
@@ -454,3 +498,20 @@ def _update_or_insert_workout_for_specific_date(
         # Insert new workout
         update_query = {"$push": {"workouts": new_workout}}
         weekly_plan_dboperations.update_from_mongodb({"week_id": week_id}, update_query)
+
+
+def format_chat_history(chat_history):
+    """
+    Convert chat history to a simplified format.
+
+    Args:
+    chat_history (list): List of chat messages with 'role' and 'content'.
+
+    Returns:
+    str: Formatted chat history as a string.
+    """
+    formatted_history = ""
+    for message in chat_history:
+        role = "User" if message["role"] == "user" else "Assistant"
+        formatted_history += f"{role}: {message['content']}\n\n"
+    return formatted_history.strip()

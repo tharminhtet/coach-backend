@@ -1,0 +1,26 @@
+Create a workout plan.
+
+### User's Comment ###
+User's concerns and comments about this week's training plan.
+Highest priority when planning the workout.
+"{comment}"
+
+### Instructions ###
+Strictly follow the following instructions if applicable.
+Second highest priority when planning the workout.
+{instructions}
+
+### Time Information ###
+- Current day: {current_day}
+- Start of the week: {start_of_the_week}
+
+### User Profile ###
+Information about the user's fitness background, goals
+Respect user's preferences and constraints.
+{user_data}
+
+### Workout History ###
+Context about user's old_training_plans
+{old_training_plans}
+
+

@@ -44,6 +44,7 @@ class WorkoutJournalAssistant(BaseAssistant):
         chat_history: list[dict],
         user_message: str,
         purpose_data: WorkoutJournalPurposeData,
+        user_memories: Optional[str] = None,
     ) -> tuple[StreamingResponse, Optional[str]]:
         """
         Process a chat message for workout journaling.
