@@ -21,6 +21,8 @@ origins = [
     "http://localhost:3002",
     "http://localhost:8080",
     "http://127.0.0.1:3000",
+    "https://www.novana.live",
+    "https://novana.live",
 ]
 
 app.add_middleware(
