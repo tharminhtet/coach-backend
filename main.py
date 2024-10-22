@@ -7,6 +7,7 @@ from routers.generate_plan import router as generate_plan_router
 from routers.chat_router import router as chat_router
 from routers.auth.authentication import router as authentication_router
 from routers.user_profile import router as user_profile_router
+from routers.modify_workout_plan import router as modify_workout_plan_router
 
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -20,6 +21,8 @@ origins = [
     "http://localhost:3002",
     "http://localhost:8080",
     "http://127.0.0.1:3000",
+    "https://www.novana.live",
+    "https://novana.live",
 ]
 
 app.add_middleware(
@@ -35,6 +38,7 @@ app.include_router(generate_plan_router)
 app.include_router(chat_router)
 app.include_router(authentication_router)
 app.include_router(user_profile_router)
+app.include_router(modify_workout_plan_router)
 
 
 @app.exception_handler(Exception)
