@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Union
 from db.db_operations import DbOperations
 from authorization import user_or_admin_required
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 import uuid
 from services.onboarding_assistant import OnboardingAssistant, OnboardingPurposeData
 from services.workout_journal_assistant import (
@@ -36,14 +36,8 @@ class ChatMessage(BaseModel):
     timestamp: datetime
 
 
-class BaseChatRequest(BaseModel):
+class ChatRequest(BaseModel):
     message: str = Field(..., description="The message content sent by the user")
-    purpose: ChatPurpose = Field(
-        ..., description="The purpose or context of the chat message"
-    )
-    chat_id: Optional[str] = Field(
-        None, description="Unique identifier for the chat session, if one exists"
-    )
 
 
 class OnboardingChatRequest(BaseModel):
@@ -63,15 +57,8 @@ class WorkoutGuideChatRequest(BaseModel):
     week_id: str = Field(..., description="Week ID of the workout guide being asked.")
 
 
-class ChatRequest(BaseChatRequest):
-    purpose_data: Optional[
-        Union[OnboardingChatRequest, WorkoutJournalChatRequest, WorkoutGuideChatRequest]
-    ] = Field(None, description="Purpose-specific data")
-
-
 class ChatResponse(BaseModel):
     message: str
-    chat_id: str
     question: Optional[Dict] = None
     complete: bool
 
@@ -100,45 +87,23 @@ async def chat(
     Process a chat message and return a response.
     """
     try:
-        chat_id = request.chat_id or str(uuid.uuid4())
         user_id = await get_user_id_internal(current_user["email"])
-        chat_history, _, _ = gph._get_chat_history(chat_id, False)
-        user_memories = gph._extract_user_memories(user_id=user_id)
-        # user_message isn't needed for the initial message, marked by empty content.
-        user_message = (
-            {"role": "user", "content": request.message} if request.message else None
+        chat_id, chat_history = gph._get_current_day_chat_thread(
+            user_id, datetime.now(timezone.utc).date().isoformat()
         )
+        user_memories = gph._extract_user_memories(user_id=user_id)
+        user_message = {
+            "role": "user",
+            "content": request.message,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
 
         client = OpenAI()
-        if request.purpose == ChatPurpose.ONBOARDING:
-            assistant = OnboardingAssistant(client)
-            purpose_data: OnboardingPurposeData = {
-                "user_name": request.purpose_data.user_name
-            }
-        elif request.purpose == ChatPurpose.WORKOUT_JOURNAL:
-            assistant = WorkoutJournalAssistant(client)
-            purpose_data: WorkoutJournalPurposeData = {
-                "workout_date": request.purpose_data.workout_date,
-                "user_email": current_user["email"],
-            }
-        elif request.purpose == ChatPurpose.WORKOUT_GUIDE:
-            assistant = WorkoutGuideAssistant(client)
-            purpose_data: WorkoutGuidePurposeData = {
-                "workout_date": datetime.strptime(
-                    request.purpose_data.workout_guide_date, "%Y-%m-%d"
-                ),
-                "user_email": current_user["email"],
-            }
-        elif request.purpose == ChatPurpose.WORKOUT_LOG:
-            assistant = WorkoutLogAssistant(client)
-            purpose_data = None
-        else:
-            raise HTTPException(status_code=400, detail="Invalid chat purpose")
-
-        ai_response_stream, system_message = await assistant.chat(
+        assistant = WorkoutLogAssistant(client)
+        ai_response_stream, _ = await assistant.chat(
             chat_history,
             request.message,
-            purpose_data,
+            None,
             json.dumps(user_memories, indent=2),
         )
 
@@ -149,7 +114,6 @@ async def chat(
                 full_response = extraction
                 chat_response = ChatResponse(
                     message=extraction.response if extraction.response else "",
-                    chat_id=chat_id,
                     question=(
                         extraction.question.model_dump()
                         if extraction.question
@@ -160,9 +124,11 @@ async def chat(
                 yield f"{json.dumps(chat_response.model_dump())}\n"
 
             if full_response:
-                ai_message = {"role": "assistant", "content": full_response.response}
-                if system_message:
-                    chat_history = [{"role": "system", "content": system_message}]
+                ai_message = {
+                    "role": "assistant",
+                    "content": full_response.response,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
                 if user_message:
                     chat_history.append(user_message)
                 chat_history.append(ai_message)
@@ -170,8 +136,6 @@ async def chat(
                     user_id,
                     chat_id,
                     chat_history,
-                    request.purpose,
-                    request.purpose_data,
                 )
 
         return StreamingResponse(generate(), media_type="text/event-stream")
@@ -373,26 +337,29 @@ def _save_chat_messages(
     user_id: str,
     chat_id: str,
     messages: List[Dict[str, str]],
-    purpose: ChatPurpose,
-    purpose_data: Optional[
-        Union[OnboardingChatRequest, WorkoutJournalChatRequest, WorkoutGuideChatRequest]
-    ],
 ):
     """
     Save chat messages to the database.
     """
     db_operations = DbOperations("chat-history")
-    purpose_data_dict = purpose_data.model_dump() if purpose_data else None
-    db_operations.collection.update_one(
-        {"chat_id": chat_id},
-        {
-            "$set": {
+    if not chat_id:
+        # Create a new chat thread
+        chat_id = str(uuid.uuid4())
+        db_operations.collection.insert_one(
+            {
+                "chat_id": chat_id,
                 "user_id": user_id,
-                "time": datetime.now().isoformat(),
-                "purpose": purpose.value,
-                "purpose_data": purpose_data_dict,
+                "date": datetime.now(timezone.utc).date().isoformat(),
                 "messages": messages,
             }
-        },
-        upsert=True,
-    )
+        )
+    else:
+        # Update existing chat thread
+        db_operations.collection.update_one(
+            {"chat_id": chat_id},
+            {
+                "$set": {
+                    "messages": messages,
+                }
+            },
+        )

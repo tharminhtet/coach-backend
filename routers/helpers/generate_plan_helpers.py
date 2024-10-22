@@ -206,6 +206,38 @@ def _get_chat_history(
     return messages, purpose, purpose_data
 
 
+def _get_current_day_chat_thread(
+    user_id: str, date: str
+) -> tuple[str, list[dict[str, str]]]:
+    """
+    Retrieve the chat thread for a specific user and date.
+
+    Args:
+        user_id (str): The ID of the user.
+        date (str): The date of the chat thread in UTC format.
+
+    Returns:
+        tuple: A tuple containing:
+            - chat_id (str): The ID of the chat thread. If no existing thread is found, a new UUID is generated.
+            - messages (list): A list of dictionaries representing the chat messages. Each dictionary contains 'role' and 'content' keys.
+                               If no existing thread is found, an empty list is returned.
+
+    Note:
+        The date parameter is expected to be in UTC format.
+    """
+    db_operations = DbOperations("chat-history")
+    chat_document = db_operations.collection.find_one(
+        {"user_id": user_id, "date": date}
+    )
+
+    if not chat_document or "messages" not in chat_document:
+        return "", []
+
+    chat_id = chat_document["chat_id"]
+    messages = chat_document["messages"]
+    return chat_id, [{"role": m["role"], "content": m["content"]} for m in messages]
+
+
 def _cleanup_chat_history(chat_document: dict):
     """
     Always remove the first message if it's a system message.
