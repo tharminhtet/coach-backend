@@ -157,6 +157,19 @@ class ChatHistoryResponse(BaseModel):
     ]
 
 
+@router.get("/history", response_model=List[Dict[str, str]])
+async def get_chat_history(
+    current_user: dict = Depends(user_or_admin_required),
+    page: int = Query(default=0, ge=0),
+):
+    try:
+        user_id = await get_user_id_internal(current_user["email"])
+        chat_history = gph._get_paginated_chat_history(user_id, page, 1)
+        return chat_history
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/chat/{chat_id}", response_model=ChatHistoryResponse)
 async def get_chat_history(chat_id: str):
     """

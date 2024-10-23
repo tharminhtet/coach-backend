@@ -226,6 +226,7 @@ def _get_current_day_chat_thread(
         The date parameter is expected to be in UTC format.
     """
     db_operations = DbOperations("chat-history")
+    print(user_id, date)
     chat_document = db_operations.collection.find_one(
         {"user_id": user_id, "date": date}
     )
@@ -236,6 +237,34 @@ def _get_current_day_chat_thread(
     chat_id = chat_document["chat_id"]
     messages = chat_document["messages"]
     return chat_id, [{"role": m["role"], "content": m["content"]} for m in messages]
+
+
+def _get_paginated_chat_history(user_id: str, page: int = 0, page_size: int = 1):
+    """
+    Retrieve paginated chat history for a user.
+
+    Args:
+        user_id (str): The user's ID
+        page (int): Page number (0-based)
+        page_size (int): Number of chats to return per page
+
+    Returns:
+        messages (list): List of processed messages with role and content
+    """
+    db_operations = DbOperations("chat-history")
+    chat_document = (
+        db_operations.collection.find({"user_id": user_id})
+        .sort("date", -1)
+        .skip(page * page_size)
+        .limit(1)
+        .next()
+    )
+
+    if not chat_document or "messages" not in chat_document:
+        return "", []
+
+    messages = chat_document["messages"]
+    return [{"role": m["role"], "content": m["content"]} for m in messages]
 
 
 def _cleanup_chat_history(chat_document: dict):
