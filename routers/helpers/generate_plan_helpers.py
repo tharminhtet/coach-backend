@@ -226,7 +226,6 @@ def _get_current_day_chat_thread(
         The date parameter is expected to be in UTC format.
     """
     db_operations = DbOperations("chat-history")
-    print(user_id, date)
     chat_document = db_operations.collection.find_one(
         {"user_id": user_id, "date": date}
     )

@@ -141,6 +141,7 @@ async def initiateUserDetails(current_user: dict = Depends(user_or_admin_require
                 "availableDays": None,
             },
             "memories": [],
+            "system": {"timezone": "UTC"},
         }
 
         user_dboperations = DbOperations("user-details")
