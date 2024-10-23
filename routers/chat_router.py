@@ -162,10 +162,11 @@ class ChatHistoryResponse(BaseModel):
 async def get_chat_history(
     current_user: dict = Depends(user_or_admin_required),
     page: int = Query(default=0, ge=0),
+    page_size: int = Query(default=1, ge=1, le=100),
 ):
     try:
         user_id = await get_user_id_internal(current_user["email"])
-        chat_history = gph._get_paginated_chat_history(user_id, page, 1)
+        chat_history = gph._get_paginated_chat_history(user_id, page, page_size)
         return chat_history
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
