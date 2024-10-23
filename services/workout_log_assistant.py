@@ -52,21 +52,13 @@ class WorkoutLogAssistant(BaseAssistant):
         Returns:
             tuple[StreamingResponse, Optional[str]]: The AI's response as a stream and the system message if it's a new conversation.
         """
-        system_message = None
-        is_new_conversation = not chat_history
 
-        if is_new_conversation:
-            with open(prompt_map["workout_log_chat"], "r") as file:
-                system_message = file.read()
-                if user_memories:
-                    system_message = system_message.replace(
-                        "{instructions}", user_memories
-                    )
-        elif chat_history[0]["role"] == "system":
-            system_message = chat_history[0]["content"]
-            chat_history = chat_history[1:]
+        with open(prompt_map["workout_log_chat"], "r") as file:
+            system_message = file.read()
+            if user_memories:
+                system_message = system_message.replace("{instructions}", user_memories)
         response_data = self.client.chat_json_output_stream(
             chat_history, system_message, user_message, ResponseModel
         )
 
-        return response_data, system_message if is_new_conversation else None
+        return response_data, system_message
