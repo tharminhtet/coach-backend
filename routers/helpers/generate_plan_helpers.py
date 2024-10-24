@@ -243,7 +243,8 @@ def _get_current_day_chat_thread(
 
 def _get_paginated_chat_history(user_id: str, page: int = 0, page_size: int = 1):
     """
-    Retrieve paginated chat history for a user.
+    Retrieve paginated most recent chat history for a user.
+    Messages are returned in chronological order.
 
     Args:
         user_id (str): The user's ID

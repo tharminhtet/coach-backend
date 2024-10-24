@@ -391,6 +391,7 @@ def _create_log_task(user_id: str):
     )
 
     if not task:
+        # Create a new task
         # Get user's local timezone
         user_details_dboperations = DbOperations("user-details")
         query = {"user_id": user_id}
