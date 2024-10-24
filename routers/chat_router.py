@@ -137,6 +137,7 @@ async def chat(
                     chat_id,
                     chat_history,
                 )
+                _create_log_task(user_id)
 
         return StreamingResponse(generate(), media_type="text/event-stream")
     except Exception as e:
@@ -161,10 +162,11 @@ class ChatHistoryResponse(BaseModel):
 async def get_chat_history(
     current_user: dict = Depends(user_or_admin_required),
     page: int = Query(default=0, ge=0),
+    page_size: int = Query(default=1, ge=1, le=100),
 ):
     try:
         user_id = await get_user_id_internal(current_user["email"])
-        chat_history = gph._get_paginated_chat_history(user_id, page, 1)
+        chat_history = gph._get_paginated_chat_history(user_id, page, page_size)
         return chat_history
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -373,6 +375,45 @@ def _save_chat_messages(
             {
                 "$set": {
                     "messages": messages,
+                }
+            },
+        )
+
+
+def _create_log_task(user_id: str):
+    """
+    Create a log task for the given user and date if it doesn't exist yet.
+    If it exists and the status is not "pending", update it to "pending".
+    """
+    db_operations = DbOperations("tasks")
+    task = db_operations.collection.find_one(
+        {"user_id": user_id, "task_type": "log_workout"}
+    )
+
+    if not task:
+        # Create a new task
+        # Get user's local timezone
+        user_details_dboperations = DbOperations("user-details")
+        query = {"user_id": user_id}
+        user_details = user_details_dboperations.read_one_from_mongodb(query)
+        # Use IANA timezone format (e.g., "America/New_York")
+        local_timezone = user_details.get("system", {}).get("timezone", "UTC")
+        new_task = {
+            "task_id": str(uuid.uuid4()),
+            "task_type": "log_workout",
+            "status": "pending",  # or completed
+            "last_processed_time_utc": datetime.now(timezone.utc).isoformat(),
+            "local_timezone": local_timezone,
+            "user_id": user_id,
+        }
+        db_operations.collection.insert_one(new_task)
+    elif task["status"] != "pending":
+        # If status is non-pending, flip it to indicate more messages to process.
+        db_operations.collection.update_one(
+            {"_id": task["_id"]},
+            {
+                "$set": {
+                    "status": "pending",
                 }
             },
         )

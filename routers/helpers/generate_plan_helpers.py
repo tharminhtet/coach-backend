@@ -226,7 +226,6 @@ def _get_current_day_chat_thread(
         The date parameter is expected to be in UTC format.
     """
     db_operations = DbOperations("chat-history")
-    print(user_id, date)
     chat_document = db_operations.collection.find_one(
         {"user_id": user_id, "date": date}
     )
@@ -236,12 +235,16 @@ def _get_current_day_chat_thread(
 
     chat_id = chat_document["chat_id"]
     messages = chat_document["messages"]
-    return chat_id, [{"role": m["role"], "content": m["content"]} for m in messages]
+    return chat_id, [
+        {"role": m["role"], "content": m["content"], "timestamp": m["timestamp"]}
+        for m in messages
+    ]
 
 
 def _get_paginated_chat_history(user_id: str, page: int = 0, page_size: int = 1):
     """
-    Retrieve paginated chat history for a user.
+    Retrieve paginated most recent chat history for a user.
+    Messages are returned in chronological order.
 
     Args:
         user_id (str): The user's ID
@@ -252,19 +255,32 @@ def _get_paginated_chat_history(user_id: str, page: int = 0, page_size: int = 1)
         messages (list): List of processed messages with role and content
     """
     db_operations = DbOperations("chat-history")
-    chat_document = (
-        db_operations.collection.find({"user_id": user_id})
-        .sort("date", -1)
-        .skip(page * page_size)
-        .limit(1)
-        .next()
-    )
+    try:
+        chat_documents = list(
+            db_operations.collection.find({"user_id": user_id})
+            .sort("date", -1)
+            .skip(page * page_size)
+            .limit(page_size)
+        )
+        all_messages = []
+        for chat_document in reversed(chat_documents):
+            if "messages" in chat_document:
+                messages = chat_document["messages"]
+                all_messages.extend(
+                    [
+                        {
+                            "role": m["role"],
+                            "content": m["content"],
+                            "timestamp": m["timestamp"],
+                        }
+                        for m in messages
+                    ]
+                )
 
-    if not chat_document or "messages" not in chat_document:
-        return "", []
-
-    messages = chat_document["messages"]
-    return [{"role": m["role"], "content": m["content"]} for m in messages]
+        return all_messages
+    except Exception as e:
+        logger.error(f"Error retrieving paginated chat history: {str(e)}")
+        return []
 
 
 def _cleanup_chat_history(chat_document: dict):
